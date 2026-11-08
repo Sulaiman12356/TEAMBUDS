@@ -100,6 +100,8 @@ try {
     og_tags = """<meta property="og:title" content="TeamBud | Find Your People. Build Your Future.">
 <meta property="og:description" content="TeamBud connects talented students with complementary skills so they can form teams, build agencies and work with real clients.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://teambud.vercel.app">
+<link rel="canonical" href="https://teambud.vercel.app">
 <meta name="twitter:card" content="summary_large_image">
 """
     index_html = home.replace('<meta name="description"', og_tags + '<meta name="description"')

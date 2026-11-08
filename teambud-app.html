@@ -297,7 +297,7 @@ h1,h2,h3,h4{font-family:var(--head);line-height:1.15;letter-spacing:-.01em}
 <script>
 "use strict";
 /* ===================== Config & Constants ===================== */
-const SITE_URL = "teambud-home.html";
+const SITE_URL = location.pathname.endsWith(".html") ? "teambud-home.html" : "/";
 const CATS = [
   "Technology and Software Development",
   "Graphics and Brand Design",

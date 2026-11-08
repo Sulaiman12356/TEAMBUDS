@@ -1,6 +1,6 @@
 "use strict";
 /* ===================== Config & Constants ===================== */
-const SITE_URL = "teambud-home.html";
+const SITE_URL = location.pathname.endsWith(".html") ? "teambud-home.html" : "/";
 const CATS = [
   "Technology and Software Development",
   "Graphics and Brand Design",
