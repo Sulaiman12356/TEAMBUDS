@@ -2,21 +2,58 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true,
+  "cleanUrls": false,
   "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/teambud-home", "destination": "/teambud-home.html" },
     { "source": "/teambud-app", "destination": "/teambud-app.html" },
-    { "source": "/agency/:slug", "destination": "/teambud-app.html" },
+    { "source": "/agency/:path*", "destination": "/teambud-app.html" },
     { "source": "/agency-hub/:path*", "destination": "/teambud-app.html" },
     { "source": "/join-agency/:path*", "destination": "/teambud-app.html" },
+    { "source": "/marketplace/:path*", "destination": "/teambud-app.html" },
     { "source": "/marketplace", "destination": "/teambud-app.html" },
     { "source": "/create-agency", "destination": "/teambud-app.html" },
     { "source": "/client/:path*", "destination": "/teambud-app.html" },
     { "source": "/client", "destination": "/teambud-app.html" },
     { "source": "/app/:path*", "destination": "/teambud-app.html" },
+    { "source": "/app", "destination": "/teambud-app.html" },
     { "source": "/login", "destination": "/teambud-app.html" },
     { "source": "/register/:path*", "destination": "/teambud-app.html" },
-    { "source": "/register", "destination": "/teambud-app.html" }
+    { "source": "/register", "destination": "/teambud-app.html" },
+    { "source": "/forgot", "destination": "/teambud-app.html" },
+    { "source": "/reset", "destination": "/teambud-app.html" },
+    { "source": "/check-email/:path*", "destination": "/teambud-app.html" },
+    { "source": "/check-email", "destination": "/teambud-app.html" },
+    { "source": "/verify/:path*", "destination": "/teambud-app.html" },
+    { "source": "/verify", "destination": "/teambud-app.html" }
   ]
 }

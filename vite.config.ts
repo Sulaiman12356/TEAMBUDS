@@ -1,22 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { fileURLToPath } from 'url';
+import { defineConfig } from 'vite';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(import.meta.dirname, '.'),
+        '@': path.resolve(__dirname, '.'),
       },
     },
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(import.meta.dirname, 'index.html'),
-          home: path.resolve(import.meta.dirname, 'teambud-home.html'),
-          app: path.resolve(import.meta.dirname, 'teambud-app.html'),
+          main: path.resolve(__dirname, 'index.html'),
+          home: path.resolve(__dirname, 'teambud-home.html'),
+          app: path.resolve(__dirname, 'teambud-app.html'),
         },
       },
     },
