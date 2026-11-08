@@ -1,0 +1,6 @@
+{
+  "name": "TeamBud",
+  "description": "TeamBud connects talented students with complementary skills so they can form teams, build agencies and work with real clients.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
