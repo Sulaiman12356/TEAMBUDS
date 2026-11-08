@@ -8,15 +8,15 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html'),
-          home: path.resolve(__dirname, 'teambud-home.html'),
-          app: path.resolve(__dirname, 'teambud-app.html'),
+          main: path.resolve(import.meta.dirname, 'index.html'),
+          home: path.resolve(import.meta.dirname, 'teambud-home.html'),
+          app: path.resolve(import.meta.dirname, 'teambud-app.html'),
         },
       },
     },

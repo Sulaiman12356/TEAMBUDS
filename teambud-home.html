@@ -643,7 +643,30 @@ var FAQ = [
  ["Is TeamBud only for Nigerian students?","The initial focus is Nigeria, with the platform designed to accommodate future expansion."]
 ];
 /* Wire these to the backend. Agencies come from the database, social links from admin settings. */
-var AGENCIES = [];        /* [{name, logo, description, categories[], members, institution, verified, available, portfolio[], slug}] */
+var AGENCIES = [];
+try {
+  var _raw = localStorage.getItem('teambud_prototype_v1');
+  if (_raw) {
+    var _db = JSON.parse(_raw);
+    if (_db && _db.agencies && _db.agencies.length) {
+      AGENCIES = _db.agencies.filter(function(a){ return a.status === 'active'; }).map(function(a){
+        return {
+          name: a.name,
+          logo: a.logo || '',
+          description: a.shortDesc || a.fullDesc || '',
+          categories: [a.mainCategory].concat(a.additionalServices || []).filter(Boolean),
+          members: (a.members || []).length,
+          institution: a.institution || '',
+          verified: true,
+          available: a.availability !== 'unavailable',
+          portfolio: a.portfolio || [],
+          slug: a.slug
+        };
+      });
+    }
+  }
+} catch(e) {}
+
 var SOCIAL_LINKS = [];    /* [{label, url, svgPath}] configured by the administrator */
 
 /* ---- Render ---- */
@@ -681,7 +704,7 @@ function renderAgencies(){
     return '<article class="acard"><div class="top"><div class="logo">'+logo+'</div><div><h3>'+esc(a.name)+(a.verified?'<span class="badge">Verified</span>':'')+'</h3><div class="meta" style="border:0;padding:0">'+esc(a.institution||'')+'</div></div></div>'+
     '<p class="desc">'+esc(a.description)+'</p><div class="tags">'+(a.categories||[]).map(function(t){return '<span>'+esc(t)+'</span>'}).join('')+'</div>'+
     '<div class="meta"><span>'+a.members+' members</span><span>'+(a.available?'Available for projects':'Not taking projects')+'</span></div>'+
-    '<div class="btns"><a class="btn btn-ghost btn-sm" href="/agency/'+esc(a.slug)+'">View Agency</a><a class="btn btn-primary btn-sm" href="/agency/'+esc(a.slug)+'/quote">Request a Quote</a></div></article>';
+    '<div class="btns"><a class="btn btn-ghost btn-sm" href="teambud-app.html#/agency/'+esc(a.slug)+'">View Agency</a><a class="btn btn-primary btn-sm" href="teambud-app.html#/agency/'+esc(a.slug)+'">Request a Quote</a></div></article>';
   }).join('');
 }
 ['f-cat','f-inst','f-size','f-ver','f-avail'].forEach(function(id){document.getElementById(id).addEventListener('change',renderAgencies)});
