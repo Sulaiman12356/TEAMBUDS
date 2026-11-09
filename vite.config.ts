@@ -8,7 +8,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'paystack-api-middleware',
+        configureServer(server) {
+          server.middlewares.use(async (req, res, next) => {
+            if (req.url && (req.url.startsWith('/api/paystack') || req.url === '/api/paystack')) {
+              try {
+                const { default: handler } = await import('./api/paystack.ts');
+                await handler(req as any, res as any);
+              } catch (err: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: err.message }));
+              }
+              return;
+            }
+            next();
+          });
+        }
+      }
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

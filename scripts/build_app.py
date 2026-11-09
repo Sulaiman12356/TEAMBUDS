@@ -89,6 +89,42 @@ def get_extra_css():
 .agreement-item{margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
 .agreement-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
 .disclaimer-alert{background:#FFFDE7;border:1px solid #FFF59D;color:#795548;padding:16px;border-radius:12px;margin:18px 0;font-size:.92rem}
+
+/* ===================== Sections 10 & 11: Payments & Opportunities ===================== */
+.pay-badge{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.02em;text-transform:uppercase}
+.pay-badge.Paid{background:#E8F5E9;color:#1B5E20;border:1px solid #A5D6A7}
+.pay-badge.AwaitingPayment{background:#FFF9C4;color:#E65100;border:1px solid #FFE082}
+.pay-badge.Processing{background:#E1F5FE;color:#0277BD;border:1px solid #81D4FA}
+.pay-badge.Failed{background:#FFEBEE;color:#C62828;border:1px solid #EF9A9A}
+.pay-badge.Refunded{background:#EDE7F6;color:#4527A0;border:1px solid #B39DDB}
+.pay-badge.Disputed{background:#FBE9E7;color:#D84315;border:1px solid #FFAB91}
+
+.finance-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:20px 0}
+.stat-box{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:20px;position:relative}
+.stat-box .num{font-size:1.85rem;font-family:var(--head);font-weight:800;color:var(--forest);margin:6px 0 2px}
+.stat-box .sub{font-size:.82rem;color:var(--muted)}
+.stat-box.highlight{border-color:var(--emerald);background:rgba(23,107,80,0.02)}
+
+.alloc-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.alloc-progress{background:rgba(23,107,80,0.12);height:10px;border-radius:999px;overflow:hidden;margin:12px 0;display:flex}
+.alloc-progress-seg{height:100%;transition:width .3s}
+
+.opp-filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0;align-items:center}
+.opp-chip{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--white);font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.opp-chip:hover{border-color:var(--emerald);color:var(--forest)}
+.opp-chip.active{background:var(--emerald);color:#fff;border-color:var(--emerald)}
+
+.opp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;margin:20px 0}
+.opp-card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s,box-shadow .15s;position:relative}
+.opp-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(24,68,55,0.08);border-color:var(--forest)}
+.opp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.opp-org-badge{width:46px;height:46px;border-radius:12px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:1.2rem;flex-shrink:0}
+
+.badge.verified{background:#E8F5E9;color:#1B5E20;border:1px solid #81C784}
+.badge.community{background:#FFF8E1;color:#F57F17;border:1px solid #FFE082}
+
+.paystack-modal{border:2px solid #09A5DB;border-radius:16px;background:var(--white);padding:28px}
+.paystack-banner{background:linear-gradient(135deg,#011B33 0%,#09A5DB 100%);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
 """
 
 print("Loaded get_extra_css")

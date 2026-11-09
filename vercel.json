@@ -53,6 +53,8 @@
     { "source": "/reset", "destination": "/teambud-app.html" },
     { "source": "/check-email/:path*", "destination": "/teambud-app.html" },
     { "source": "/check-email", "destination": "/teambud-app.html" },
+    { "source": "/opportunities/:path*", "destination": "/teambud-app.html" },
+    { "source": "/opportunities", "destination": "/teambud-app.html" },
     { "source": "/verify/:path*", "destination": "/teambud-app.html" },
     { "source": "/verify", "destination": "/teambud-app.html" }
   ]
