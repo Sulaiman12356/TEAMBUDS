@@ -25,6 +25,17 @@ const INSTITUTIONS = ["Olabisi Onabanjo University","University of Lagos","Unive
 const INTENTS = [["team","Looking for a team"],["create","Interested in creating an agency"],["join","Looking to join an existing agency"],["opps","Interested in discovering opportunities"]];
 const SKILL_SUGGEST = ["Web development","Mobile app development","UI and UX design","Graphic design","Brand identity","Digital marketing","Social media management","Copywriting","Content writing","Video editing","Photography","Data analysis","Bookkeeping","Business planning","Project management","Public speaking","Event planning","Tutoring"];
 const AVAIL = [["unset","Not set"],["now","Available now"],["part","Available part time"],["later","Available later"],["no","Not available"]];
+const EXPERIENCE_LEVELS = ["Beginner (Under 1 yr)","Intermediate (1-2 yrs)","Advanced (2-4 yrs)","Expert / Lead (4+ yrs)"];
+const LOOKING_FOR_OPTIONS = [
+  { id: "teammates", label: "Teammates for projects", icon: "👥" },
+  { id: "join_agency", label: "Join an existing agency", icon: "🤝" },
+  { id: "create_agency", label: "Co-founders to start an agency", icon: "🚀" },
+  { id: "freelance", label: "Freelance & client gigs", icon: "💼" },
+  { id: "internships", label: "Internships & attachment", icon: "🎓" },
+  { id: "mentorship", label: "Mentorship & guidance", icon: "🧭" },
+  { id: "partnerships", label: "Startup & business partnerships", icon: "💡" },
+  { id: "learning_skills", label: "Learning & skill exchange", icon: "📚" }
+];
 const CLIENT_TYPES = ["Individual","Small business","Company","Non-profit or organisation","Educational institution"];
 
 const TEAM_ROLES = [
@@ -103,6 +114,8 @@ const fresh = () => ({
   agencies: [],
   payments: [],
   opportunities: [],
+  messages: [],
+  reports: [],
   fails: {}
 });
 
@@ -113,6 +126,8 @@ try {
   if (!db.requests) db.requests = [];
   if (!db.payments) db.payments = [];
   if (!db.opportunities) db.opportunities = [];
+  if (!db.messages) db.messages = [];
+  if (!db.reports) db.reports = [];
 } catch (e) {
   db = fresh();
 }
@@ -148,7 +163,52 @@ const me = () => {
 };
 
 const userById = id => db.users.find(u => u.id === id);
-const students = () => db.users.filter(u => u.role === "student" && u.verified);
+
+function ensureStudentDefaults(u) {
+  if (!u || u.role !== "student") return u;
+  if (!u.headline) {
+    const pSkill = (u.skills && u.skills[0]) ? u.skills[0].name : "Talented Student";
+    u.headline = `${pSkill} · ${u.department || "Student"}`;
+  }
+  if (u.showLevel === undefined) u.showLevel = true;
+  if (!u.experienceLevel) {
+    const hasAdv = (u.skills || []).some(s => s.level === "Advanced");
+    u.experienceLevel = hasAdv ? "Advanced (2-4 yrs)" : "Intermediate (1-2 yrs)";
+  }
+  if (!u.category) {
+    u.category = (u.collab && u.collab[0]) || "Technology and Software Development";
+  }
+  if (!u.lookingFor || !u.lookingFor.length) {
+    u.lookingFor = ["teammates", "join_agency"];
+  }
+  if (!u.socialLinks) {
+    u.socialLinks = {};
+  }
+  if (!u.aboutMe) {
+    u.aboutMe = u.bio || "";
+  }
+  if (!u.portfolio) {
+    u.portfolio = [];
+  }
+  u.portfolio = u.portfolio.map(p => {
+    if (typeof p === "string") return { id: rid(), title: "Portfolio Project", url: p, description: "", category: "General", tools: [] };
+    if (p && !p.title && p.label) {
+      return {
+        id: p.id || rid(),
+        title: p.label,
+        url: p.url || "",
+        description: p.desc || "Student showcase item.",
+        category: "Portfolio",
+        tools: [],
+        image: p.image || ""
+      };
+    }
+    return p;
+  });
+  return u;
+}
+
+const students = () => db.users.filter(u => u.role === "student" && u.verified).map(ensureStudentDefaults);
 
 function log(u, text) {
   u.activity = u.activity || [];
@@ -246,48 +306,322 @@ function isAgencyMember(agency, userId) {
 /* __SULAIMAN_PHOTO__ */
 const SULAIMAN_PHOTO = typeof window !== "undefined" && window.__SULAIMAN_PHOTO ? window.__SULAIMAN_PHOTO : "sulaiman.jpg";
 
-const DEMO = [
-  ["Onifade Sulaiman Ipesola", "mr_clarity", "Computer Science", "Lagos", "Founder of TeamBud & Clarity Digital Academy. Computer Science student, young leader, and digital entrepreneur helping students collaborate, build agencies, and earn together.", [["Digital marketing","Advanced"],["Brand strategy","Advanced"],["Team building","Advanced"],["Web development","Intermediate"]], ["Technology and Software Development","Digital Marketing","Business Consulting"], ["fintech","startups","education"], "now", SULAIMAN_PHOTO],
-  ["Adeyemi Okon", "sample_dev", "Computer Science", "Lagos", "Builds modern web applications with React and Node.js. Passionate about software architecture and team building.", [["Web development","Advanced"],["UI and UX design","Intermediate"]], ["Technology and Software Development"], ["fintech","education"], "now"],
-  ["Chioma Eze", "sample_design", "Fine and Applied Arts", "Ogun", "Brand identity and visual design strategist for ambitious digital ventures.", [["Graphic design","Advanced"],["Brand identity","Intermediate"]], ["Graphics and Brand Design","Fashion and Creative Arts"], ["fashion","branding"], "part"],
-  ["Ibrahim Musa", "sample_mkt", "Mass Communication", "Oyo", "Growth marketing, social media campaigns, and client conversion funnels.", [["Digital marketing","Intermediate"],["Social media management","Advanced"]], ["Digital Marketing","Content Creation and Media"], ["branding","education"], "now"],
-  ["Fatima Bello", "sample_write", "English and Literary Studies", "Osun", "Technical and brand copywriting for websites, presentations, and product launch decks.", [["Copywriting","Advanced"],["Content writing","Advanced"]], ["Writing and Communication"], ["writing","culture"], "now"],
-  ["Tunde Bakare", "sample_pm", "Business Administration", "Lagos", "Project manager ensuring delivery milestones, agile sprints, and client satisfaction.", [["Project management","Advanced"],["Business planning","Intermediate"]], ["Business Consulting"], ["startups","operations"], "part"]
+const DEMO_STUDENTS = [
+  {
+    name: "Onifade Sulaiman Ipesola",
+    username: "mr_clarity",
+    dept: "Computer Science",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "300 Level",
+    photo: SULAIMAN_PHOTO,
+    headline: "Founder & Lead Strategist at TeamBud · Computer Science Student · Digital Entrepreneur",
+    bio: "Founder of TeamBud & Clarity Digital Academy. Computer Science student, young leader, and digital entrepreneur helping students collaborate, build agencies, and earn together.",
+    aboutMe: "Passionate about empowering African students through collaborative entrepreneurship. Lead founder of TeamBud and Clarity Digital Academy. I blend computer science fundamentals with digital marketing, team leadership, and product strategy to help student talent build profitable student-run agencies across Nigeria.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Technology and Software Development",
+    avail: "now",
+    skills: [
+      { name: "Digital marketing", level: "Advanced", duration: "3 years", desc: "Performance marketing, funnel architecture, and campus growth blitzes.", pro: true, collab: true },
+      { name: "Brand strategy", level: "Advanced", duration: "3 years", desc: "Identity design systems, value propositions, and agency positioning.", pro: true, collab: true },
+      { name: "Team building", level: "Advanced", duration: "2 years", desc: "Recruiting complementary skill sets and structuring agile project execution.", pro: true, collab: true },
+      { name: "Web development", level: "Intermediate", duration: "2 years", desc: "Modern frontend frameworks, responsive UI, and client portals.", pro: true, collab: true }
+    ],
+    lookingFor: ["teammates", "create_agency", "partnerships", "mentorship"],
+    socialLinks: {
+      github: "https://github.com/Sulaiman12356",
+      linkedin: "https://linkedin.com",
+      twitter: "https://x.com",
+      website: "https://teambud.vercel.app"
+    },
+    portfolio: [
+      {
+        id: "p_teambud",
+        title: "TeamBud Ecosystem Platform",
+        category: "Full-Stack Web App",
+        date: "2024 - 2025",
+        description: "Architected and built the comprehensive TeamBud platform connecting Nigerian university students to form agencies, showcase abilities, and deliver client projects with transparent revenue distribution.",
+        image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80",
+        url: "https://teambud.vercel.app",
+        tools: ["React", "TypeScript", "Node.js", "Tailwind CSS"],
+        contribution: "Founder, Product Architect & Lead Engineer"
+      },
+      {
+        id: "p_clarity",
+        title: "Clarity Digital Academy Portal",
+        category: "EdTech & Learning Hub",
+        date: "2024",
+        description: "Created skill-training and community hub for 500+ undergraduate learners acquiring high-income digital skills and agency execution frameworks.",
+        image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
+        url: "https://teambud.vercel.app",
+        tools: ["JavaScript", "HTML5", "CSS3", "Responsive UI"],
+        contribution: "Founder & Lead Instructor"
+      }
+    ],
+    experience: [
+      { id: "e1", role: "Founder & Lead Director", org: "TeamBud & Clarity Academy", period: "2023 - Present", desc: "Spearheaded student agency formation networks and digital entrepreneurial training across campuses." },
+      { id: "e2", role: "Lead Student Ambassador", org: "Campus Innovation Council", period: "2024 - Present", desc: "Organized collaborative student workshops on digital agency business models." }
+    ],
+    certs: [
+      { id: "c1", name: "Executive Leadership & Venture Strategy", issuer: "Enterprise Innovation Hub", year: "2024" }
+    ],
+    collab: ["Technology and Software Development","Digital Marketing","Business Consulting"],
+    interests: ["fintech","startups","education"]
+  },
+  {
+    name: "Adeyemi Okon",
+    username: "sample_dev",
+    dept: "Computer Science",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "300 Level",
+    photo: "",
+    headline: "Full-Stack Engineer & React Specialist · 300 Level CS",
+    bio: "Builds modern web applications with React and Node.js. Passionate about software architecture, state patterns and team building.",
+    aboutMe: "Dedicated software engineer passionate about modern web applications, scalable state architectures, and robust API design. Always excited to collaborate on cross-functional student projects.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Technology and Software Development",
+    avail: "now",
+    skills: [
+      { name: "Web development", level: "Advanced", duration: "3 years", desc: "Full-stack web applications with React, TypeScript and Node.js.", pro: true, collab: true },
+      { name: "UI and UX design", level: "Intermediate", duration: "2 years", desc: "Component design systems and intuitive user journeys.", pro: true, collab: true }
+    ],
+    lookingFor: ["join_agency", "freelance", "teammates"],
+    socialLinks: { github: "https://github.com", linkedin: "https://linkedin.com", website: "https://portfolio-dev.vercel.app" },
+    portfolio: [
+      {
+        id: "p_dev1",
+        title: "Campus Mart E-commerce Engine",
+        category: "Full-Stack Web App",
+        date: "2024",
+        description: "Peer-to-peer campus marketplace allowing verified students to trade textbooks and gadgets safely.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&w=800&q=80",
+        url: "https://github.com",
+        tools: ["React", "Node.js", "Express", "PostgreSQL"],
+        contribution: "Backend & Database Lead"
+      }
+    ],
+    experience: [{ id: "ed1", role: "Frontend Lead", org: "Campus Innovation Hub", period: "2024 - Present", desc: "Built modular web components for student client engagements." }],
+    certs: [{ id: "cd1", name: "Certified Full-Stack Developer", issuer: "Developer Circle", year: "2024" }],
+    collab: ["Technology and Software Development"],
+    interests: ["fintech","education"]
+  },
+  {
+    name: "Chioma Eze",
+    username: "sample_design",
+    dept: "Fine and Applied Arts",
+    state: "Ogun",
+    inst: "Olabisi Onabanjo University",
+    level: "400 Level",
+    photo: "",
+    headline: "Brand Identity Designer & Design Systems Lead",
+    bio: "Brand identity and visual design strategist for ambitious digital ventures and youth startups.",
+    aboutMe: "Visual designer crafting distinctive typography, memorable identity systems, and user-centric digital experiences for emerging brands and agency clients.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Graphics and Brand Design",
+    avail: "part",
+    skills: [
+      { name: "Graphic design", level: "Advanced", duration: "3 years", desc: "Logotype creation, style guides, and brand collateral.", pro: true, collab: true },
+      { name: "Brand identity", level: "Intermediate", duration: "2 years", desc: "Brand positioning, color systems, and corporate packaging.", pro: true, collab: true }
+    ],
+    lookingFor: ["join_agency", "freelance", "partnerships"],
+    socialLinks: { behance: "https://behance.net", linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_des1",
+        title: "AfroVibe Fashion Brand Identity",
+        category: "Brand Identity & Design",
+        date: "2024",
+        description: "Complete brand guidelines, custom logotype, packaging assets, and lookbook for a sustainable campus fashion line.",
+        image: "https://images.unsplash.com/photo-1542744094-24638eff58bb?auto=format&fit=crop&w=800&q=80",
+        url: "https://behance.net",
+        tools: ["Figma", "Adobe Illustrator", "Photoshop"],
+        contribution: "Solo Creative Director"
+      }
+    ],
+    experience: [{ id: "edes1", role: "Creative Lead", org: "Apex Design Collective", period: "2023 - 2024", desc: "Directed 8 client visual redesigns across FMCG and apparel." }],
+    certs: [{ id: "cdes1", name: "Visual Identity Masterclass", issuer: "Design Institute", year: "2023" }],
+    collab: ["Graphics and Brand Design","Fashion and Creative Arts"],
+    interests: ["fashion","branding"]
+  },
+  {
+    name: "Ibrahim Musa",
+    username: "sample_mkt",
+    dept: "Mass Communication",
+    state: "Oyo",
+    inst: "University of Ibadan",
+    level: "300 Level",
+    photo: "",
+    headline: "Growth Marketer & Paid Performance Specialist",
+    bio: "Growth marketing, social media campaigns, and client conversion funnels for student-run businesses.",
+    aboutMe: "Data-driven marketing strategist building customer acquisition funnels, viral social campaigns, and high-converting launch strategies for university ventures.",
+    showLevel: true,
+    expLevel: "Intermediate (1-2 yrs)",
+    cat: "Digital Marketing",
+    avail: "now",
+    skills: [
+      { name: "Digital marketing", level: "Intermediate", duration: "2 years", desc: "Paid social funnels, content distribution, and analytics tracking.", pro: true, collab: true },
+      { name: "Social media management", level: "Advanced", duration: "3 years", desc: "Community engagement, viral short-form video, and retention strategy.", pro: true, collab: true }
+    ],
+    lookingFor: ["teammates", "freelance", "join_agency"],
+    socialLinks: { twitter: "https://x.com", linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_mkt1",
+        title: "UniChow Campus Delivery Launch",
+        category: "Digital Marketing Campaign",
+        date: "2024",
+        description: "Managed 30-day viral TikTok and WhatsApp marketing blitz generating 3,400 orders in first month across 2 campuses.",
+        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
+        url: "https://x.com",
+        tools: ["Meta Ads", "Google Analytics", "Canva"],
+        contribution: "Campaign Strategist"
+      }
+    ],
+    experience: [{ id: "emkt1", role: "Growth Consultant", org: "Campus Merchant Union", period: "2024 - Present", desc: "Designed customer onboarding funnels for 12 campus shops." }],
+    certs: [{ id: "cmkt1", name: "Performance Marketing Pro", issuer: "Digital Growth Lab", year: "2024" }],
+    collab: ["Digital Marketing","Content Creation and Media"],
+    interests: ["branding","education"]
+  },
+  {
+    name: "Fatima Bello",
+    username: "sample_write",
+    dept: "English and Literary Studies",
+    state: "Osun",
+    inst: "Obafemi Awolowo University",
+    level: "400 Level",
+    photo: "",
+    headline: "Senior Technical & Brand Copywriter",
+    bio: "Technical and brand copywriting for websites, presentations, and product launch decks.",
+    aboutMe: "Wordsmith turning complex products into clear, compelling narratives. Specializing in landing page copy, case studies, investor pitch decks, and SEO content.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Writing and Communication",
+    avail: "now",
+    skills: [
+      { name: "Copywriting", level: "Advanced", duration: "3 years", desc: "High-converting sales copy, value propositions, and email sequences.", pro: true, collab: true },
+      { name: "Content writing", level: "Advanced", duration: "3 years", desc: "Long-form tech guides, thought leadership, and press announcements.", pro: true, collab: true }
+    ],
+    lookingFor: ["freelance", "join_agency", "mentorship"],
+    socialLinks: { linkedin: "https://linkedin.com", website: "https://medium.com" },
+    portfolio: [
+      {
+        id: "p_wri1",
+        title: "FinStart Investor Pitch & Whitepaper",
+        category: "Copywriting & Content",
+        date: "2024",
+        description: "Authored 24-page fintech overview and investor narrative that helped founders secure campus accelerator funding.",
+        image: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80",
+        url: "https://medium.com",
+        tools: ["Notion", "Google Docs", "Grammarly"],
+        contribution: "Principal Writer"
+      }
+    ],
+    experience: [{ id: "ewri1", role: "Staff Editor", org: "University Herald", period: "2023 - Present", desc: "Supervised editorial staff and student business reporting." }],
+    certs: [{ id: "cwri1", name: "Professional Content Strategist", issuer: "Writers Guild", year: "2023" }],
+    collab: ["Writing and Communication"],
+    interests: ["writing","culture"]
+  },
+  {
+    name: "Tunde Bakare",
+    username: "sample_pm",
+    dept: "Business Administration",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "400 Level",
+    photo: "",
+    headline: "Agile Project Manager & Operations Strategist",
+    bio: "Project manager ensuring delivery milestones, agile sprints, and client satisfaction for multi-student agencies.",
+    aboutMe: "Operational catalyst orchestrating multi-disciplinary student teams. Ensuring on-time delivery, scope clarity, and structured client communication.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Business Consulting",
+    avail: "part",
+    skills: [
+      { name: "Project management", level: "Advanced", duration: "3 years", desc: "Scrum sprints, Kanban workflows, milestone tracking, and QA checkpoints.", pro: true, collab: true },
+      { name: "Business planning", level: "Intermediate", duration: "2 years", desc: "Feasibility studies, client proposals, pricing calculators, and budgeting.", pro: true, collab: true }
+    ],
+    lookingFor: ["create_agency", "partnerships", "teammates"],
+    socialLinks: { linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_pm1",
+        title: "KolaTech Sprint Roadmap & Delivery",
+        category: "Business Strategy & Research",
+        date: "2024",
+        description: "Structured 6 sprint cycles across 8 developers and designers, reducing bug backlog by 45% and ensuring client milestone delivery.",
+        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80",
+        url: "https://linkedin.com",
+        tools: ["Jira", "Trello", "Slack", "Asana"],
+        contribution: "Scrum Master & PM"
+      }
+    ],
+    experience: [{ id: "epm1", role: "Venture Associate", org: "Lagos Student Incubator", period: "2024 - Present", desc: "Tracked execution KPIs for 10 undergraduate ventures." }],
+    certs: [{ id: "cpm1", name: "Agile Project Master", issuer: "PM Alliance", year: "2024" }],
+    collab: ["Business Consulting"],
+    interests: ["startups","operations"]
+  }
 ];
 
 function seedDemoData() {
-  DEMO.forEach(d => {
-    if (db.users.some(u => u.username === d[1])) return;
-    const salt = rid();
-    db.users.push({
-      id: rid(),
-      role: "student",
-      demo: true,
-      name: d[0],
-      email: d[1] + "@demo.invalid",
-      salt,
-      passHash: "x",
-      verified: true,
-      username: d[1],
-      institution: "University of Lagos",
-      department: d[2],
-      level: "300 Level",
-      country: "Nigeria",
-      state: d[3],
-      intents: ["team","create"],
-      bio: d[4],
-      photo: d[9] || "",
-      skills: d[5].map(s => ({ id: rid(), name: s[0], level: s[1], pro: true, learn: false, collab: true })),
-      experience: [{ id: rid(), role: "Lead Contributor", org: "Campus Innovation Hub", period: "2024 - Present", desc: "Collaborated on multi-disciplinary student client engagements." }],
-      portfolio: [{ id: rid(), label: "Portfolio", url: "https://behance.net" }],
-      certs: [{ id: rid(), name: "Certified Associate", issuer: "Design Institute", year: "2024" }],
-      interests: d[7],
-      availability: d[8],
-      collab: d[6],
-      prefs: { inapp: {}, email: {} },
-      activity: [],
-      created: now() - 86400000 * 30
-    });
+  DEMO_STUDENTS.forEach(d => {
+    let u = db.users.find(x => x.username === d.username);
+    if (!u) {
+      const salt = rid();
+      u = {
+        id: rid(),
+        role: "student",
+        demo: true,
+        name: d.name,
+        email: d.username + "@demo.invalid",
+        salt,
+        passHash: "x",
+        verified: true,
+        username: d.username,
+        institution: d.inst,
+        department: d.dept,
+        level: d.level,
+        country: "Nigeria",
+        state: d.state,
+        intents: ["team","create"],
+        bio: d.bio,
+        aboutMe: d.aboutMe,
+        headline: d.headline,
+        showLevel: d.showLevel,
+        experienceLevel: d.expLevel,
+        category: d.cat,
+        photo: d.photo || "",
+        skills: d.skills.map(s => ({ id: rid(), name: s.name, level: s.level, duration: s.duration, desc: s.desc, pro: s.pro, learn: false, collab: s.collab })),
+        experience: d.experience || [],
+        portfolio: d.portfolio || [],
+        certs: d.certs || [],
+        interests: d.interests || [],
+        availability: d.avail || "now",
+        collab: d.collab || [],
+        lookingFor: d.lookingFor || ["teammates"],
+        socialLinks: d.socialLinks || {},
+        prefs: { inapp: {}, email: {} },
+        activity: [],
+        created: now() - 86400000 * 30
+      };
+      db.users.push(u);
+    } else {
+      // Refresh with rich showcase attributes while preserving existing IDs
+      u.headline = d.headline;
+      u.aboutMe = d.aboutMe;
+      u.experienceLevel = d.expLevel;
+      u.category = d.cat;
+      u.showLevel = d.showLevel;
+      u.lookingFor = d.lookingFor;
+      u.socialLinks = d.socialLinks;
+      if (d.photo) u.photo = d.photo;
+      if (!u.portfolio || u.portfolio.length === 0 || !u.portfolio[0].tools) {
+        u.portfolio = d.portfolio;
+      }
+    }
   });
 
   // Seed sample client
@@ -962,11 +1296,12 @@ const API = {
     return true;
   },
 
-  connect(meId, otherId) {
+  connect(meId, otherId, note = "") {
     if (connBetween(meId, otherId)) return;
     const a = userById(meId), b = userById(otherId);
-    db.conns.push({ id: rid(), from: meId, to: otherId, status: "pending", t: now() });
-    notify(otherId, "connection_request", a.name + " wants to connect with you.");
+    db.conns.push({ id: rid(), from: meId, to: otherId, status: "pending", note: (note || "").trim(), t: now() });
+    const notePreview = note ? ` Note: "${note.slice(0, 60)}..."` : "";
+    notify(otherId, "connection_request", a.name + " wants to connect with you." + notePreview);
     log(a, "Sent a connection request to " + b.name);
     save();
   },
@@ -989,6 +1324,39 @@ const API = {
   cancel(id) {
     db.conns = db.conns.filter(x => x.id !== id);
     save();
+  },
+
+  removeConnection(id) {
+    db.conns = db.conns.filter(x => x.id !== id);
+    save();
+  },
+
+  blockAndReport(reporterId, reportedId, reason, comments) {
+    if (!db.reports) db.reports = [];
+    db.reports.push({
+      id: rid(),
+      reporterId,
+      reportedId,
+      reason: reason || "Unspecified",
+      comments: (comments || "").trim(),
+      t: now()
+    });
+    const u = userById(reporterId);
+    if (u) {
+      if (!u.blockedUsers) u.blockedUsers = [];
+      if (!u.blockedUsers.includes(reportedId)) u.blockedUsers.push(reportedId);
+    }
+    // Remove any connection
+    db.conns = db.conns.filter(c => !( (c.from === reporterId && c.to === reportedId) || (c.from === reportedId && c.to === reporterId) ));
+    save();
+  },
+
+  unblockUser(userId, targetId) {
+    const u = userById(userId);
+    if (u && u.blockedUsers) {
+      u.blockedUsers = u.blockedUsers.filter(x => x !== targetId);
+      save();
+    }
   },
 
   /* ---------- Section 6: Agency Creation & Team Management API ---------- */
@@ -1625,25 +1993,32 @@ function closeModal() {
 /* ===================== Navigation Setup ===================== */
 const NAV = [
   ["overview", "Overview", "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"],
-  ["discover", "Discover", "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"],
-  ["agency", "My Agency", "M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"],
-  ["marketplace", "Marketplace", "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"],
-  ["opportunities", "Opportunities", "M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"],
+  ["profile", "My Talent Profile", "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
   ["skills", "My Skills", "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"],
+  ["portfolio", "My Portfolio", "M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14m-6-6h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"],
+  ["talent", "Discover Talent", "M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"],
   ["connections", "Connections", "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"],
-  ["notifications", "Notifications", "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"],
-  ["profile", "Profile", "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"]
+  ["agency", "My Agencies", "M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"],
+  ["opportunities", "Opportunities", "M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"],
+  ["messages", "Messages", "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"],
+  ["settings", "Settings", "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"]
 ];
 
 function shell(active, content) {
   const u = me();
-  const unreadCount = db.notifs.filter(n => n.uid === u.id && !n.read).length;
+  const unreadNotifs = (db.notifs || []).filter(n => n.uid === u.id && !n.read).length;
+  const pendingConns = (db.conns || []).filter(c => c.to === u.id && c.status === "pending").length;
+  const unreadMsg = (db.messages || []).filter(m => m.to === u.id && !m.read).length;
+
   const link = n => {
-    const isN = n[0] === "notifications";
-    return `<a href="#/app/${n[0]}" class="${active === n[0] ? "on" : ""}">${icon(n[2])}${n[1]}${isN && unreadCount ? ` <span class="pill">${unreadCount}</span>` : ""}</a>`;
+    let count = 0;
+    if (n[0] === "connections") count = pendingConns;
+    if (n[0] === "messages") count = unreadMsg;
+    return `<a href="#/app/${n[0]}" class="${active === n[0] ? "on" : ""}">${icon(n[2])}${n[1]}${count ? ` <span class="pill">${count}</span>` : ""}</a>`;
   };
   const tab = name => {
     const n = NAV.find(x => x[0] === name);
+    if (!n) return "";
     return `<a href="#/app/${n[0]}" class="${active === n[0] ? "on" : ""}">${icon(n[2])}<span>${n[1]}</span></a>`;
   };
 
@@ -1682,7 +2057,7 @@ function shell(active, content) {
       <div class="content" id="page">${content}</div>
     </div>
     <nav class="tabbar" aria-label="Quick navigation">
-      ${["overview", "agency", "marketplace", "opportunities", "profile"].map(tab).join("")}
+      ${["overview", "profile", "portfolio", "talent", "connections", "agency", "messages"].map(tab).join("")}
     </nav>
   </div>`;
 }
@@ -1856,30 +2231,10 @@ function completion(u) {
   return { items, pct: Math.round(items.filter(i => i[1]).length / items.length * 100) };
 }
 
-function recommend(u) {
-  const mine = new Set((u.skills || []).map(s => s.name.toLowerCase()));
-  const mi = new Set((u.interests || []).map(s => s.toLowerCase()));
-  const mc = new Set(u.collab || []);
-  return students()
-    .filter(o => o.id !== u.id && !connBetween(u.id, o.id))
-    .map(o => {
-      let s = 0;
-      (o.skills || []).forEach(k => { if (!mine.has(k.name.toLowerCase())) s += 1; });
-      (o.interests || []).forEach(k => { if (mi.has(k.toLowerCase())) s += 1; });
-      (o.collab || []).forEach(k => { if (mc.has(k)) s += 2; });
-      if (!o.skills.length) s = 0;
-      return { o, s };
-    })
-    .filter(x => x.s > 0)
-    .sort((a, b) => b.s - a.s)
-    .slice(0, 4)
-    .map(x => x.o);
-}
-
 function connBtn(u, o) {
   const s = connState(u.id, o.id);
   const c = connBetween(u.id, o.id);
-  if (s === "none") return `<button class="btn btn-primary btn-sm" data-act="connect" data-uid="${o.id}">Connect</button>`;
+  if (s === "none") return `<button class="btn btn-primary btn-sm" data-act="open-connect-modal" data-uid="${o.id}">Connect</button>`;
   if (s === "sent") return `<button class="btn btn-quiet btn-sm" disabled>Request sent</button>`;
   if (s === "connected") return `<span class="tag lime">Connected</span>`;
   return `<span class="acts"><button class="btn btn-primary btn-sm" data-act="accept" data-id="${c.id}">Accept</button><button class="btn btn-quiet btn-sm" data-act="decline" data-id="${c.id}">Decline</button></span>`;
@@ -1903,17 +2258,88 @@ function miniStudent(u, o) {
 }
 
 function incoming(u) {
-  return db.conns.filter(c => c.to === u.id && c.status === "pending");
+  return (db.conns || []).filter(c => c.to === u.id && c.status === "pending");
+}
+
+function acceptedConnections(userId) {
+  return (db.conns || []).filter(c => c.status === "accepted" && (c.from === userId || c.to === userId));
+}
+
+function recommendComplementary(u) {
+  const userSkillNames = (u.skills || []).map(s => s.name.toLowerCase());
+  const userCat = (u.category || u.department || "").toLowerCase();
+
+  let targetKeywords = [];
+  let userPrimaryType = "specialist";
+
+  const isDev = userSkillNames.some(s => /web|developer|code|react|node|python|flutter|frontend|backend|engineer/i.test(s)) || /computer|software|engineering/i.test(userCat);
+  const isDesign = userSkillNames.some(s => /design|ui|ux|figma|brand|graphic/i.test(s)) || /design|art|creative/i.test(userCat);
+  const isMarketing = userSkillNames.some(s => /marketing|seo|growth|content|social|copywriting|sales/i.test(s)) || /mass com|business|marketing/i.test(userCat);
+
+  if (isDesign) {
+    userPrimaryType = "designer";
+    targetKeywords = ["developer", "react", "frontend", "backend", "software", "marketing", "seo", "content"];
+  } else if (isDev) {
+    userPrimaryType = "developer";
+    targetKeywords = ["ui/ux", "design", "figma", "brand", "product management", "marketing", "content"];
+  } else if (isMarketing) {
+    userPrimaryType = "marketer";
+    targetKeywords = ["web development", "react", "ui/ux design", "figma", "software", "mobile development"];
+  } else {
+    targetKeywords = ["ui/ux", "web development", "marketing", "graphic design", "content writing"];
+  }
+
+  const existingConns = new Set(
+    (db.conns || [])
+      .filter(c => c.from === u.id || c.to === u.id)
+      .map(c => c.from === u.id ? c.to : c.from)
+  );
+
+  return students()
+    .filter(o => o.id !== u.id && !existingConns.has(o.id) && !(u.blockedUsers || []).includes(o.id))
+    .map(o => {
+      const otherSkills = (o.skills || []).map(s => s.name.toLowerCase());
+      const otherCat = (o.category || o.department || "").toLowerCase();
+      let matchCount = 0;
+
+      targetKeywords.forEach(kw => {
+        if (otherSkills.some(s => s.includes(kw)) || otherCat.includes(kw)) matchCount++;
+      });
+
+      let score = matchCount * 2;
+      if (o.portfolio && o.portfolio.length) score += 1;
+
+      const topOtherSkill = (o.skills && o.skills[0]) ? o.skills[0].name : (o.department || "Specialist");
+      let why = "";
+      if (userPrimaryType === "designer") {
+        why = `Their ${topOtherSkill} engineering capabilities complement your UI/UX design to build and ship complete client projects.`;
+      } else if (userPrimaryType === "developer") {
+        why = `Their ${topOtherSkill} design and product talents complement your technical code to turn software into market-ready agency products.`;
+      } else if (userPrimaryType === "marketer") {
+        why = `Their ${topOtherSkill} technical capabilities complement your growth and client acquisition strategy for commercial contracts.`;
+      } else {
+        why = `Their ${topOtherSkill} abilities provide balanced multidisciplinary talent to help form a 3-to-10 member agency team.`;
+      }
+
+      return { o, score, why };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
 }
 
 function pageOverview(u) {
   const c = completion(u);
   const inc = incoming(u);
-  const rec = recommend(u);
+  const acceptedConns = acceptedConnections(u.id);
+  const compRecs = recommendComplementary(u);
   const acts = (u.activity || []).slice(0, 6);
   const missing = c.items.filter(i => !i[1]);
   const myAgencies = userAgencies(u.id);
   const pendingInvites = userPendingInvites(u.id, u.email);
+  const unreadNotifs = (db.notifs || []).filter(n => n.uid === u.id && !n.read);
+  const savedOppsCount = (u.savedOpps || []).length;
+  const skillsCount = (u.skills || []).length;
+  const portfolioCount = (u.portfolio || []).length;
 
   return `
     <div class="page-h">
@@ -1926,15 +2352,104 @@ function pageOverview(u) {
       </div>
     </div>
 
+    <!-- Guided Setup Reminder if incomplete -->
+    ${(!u.onboarded || c.pct < 70) ? `
+      <div style="background:var(--sage);border:1px solid #BDD4C7;border-radius:14px;padding:18px 22px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+          <strong style="font-size:1.02rem;color:var(--forest);display:block;margin-bottom:4px">
+            ✨ Complete Your Guided Profile Setup (${c.pct}% Complete)
+          </strong>
+          <p style="font-size:.88rem;color:var(--forest);margin:0;max-width:680px">
+            Showcase your skills, experience level, and work samples so student agencies and commercial clients can discover your abilities.
+          </p>
+        </div>
+        <div style="display:flex;gap:10px">
+          <a class="btn btn-primary btn-sm" href="#/onboarding">Guided Setup (3 mins) →</a>
+        </div>
+      </div>
+    ` : ""}
+
+    <!-- Genuine Real Data Overview Metrics Grid (Section 7) -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px">
+      <div class="stat-box highlight">
+        <div class="sub">Skills Added</div>
+        <div class="num">${skillsCount}</div>
+        <small style="color:var(--muted)">Verified capabilities</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Portfolio Projects</div>
+        <div class="num">${portfolioCount}</div>
+        <small style="color:var(--muted)">Work showcases</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Pending Requests</div>
+        <div class="num">${inc.length}</div>
+        <small style="color:var(--muted)">Awaiting your response</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Accepted Connections</div>
+        <div class="num">${acceptedConns.length}</div>
+        <small style="color:var(--muted)">Trusted student network</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Agency Invitations</div>
+        <div class="num">${pendingInvites.length}</div>
+        <small style="color:var(--muted)">Pending team invites</small>
+      </div>
+      <div class="stat-box highlight">
+        <div class="sub">Agency Memberships</div>
+        <div class="num">${myAgencies.length}</div>
+        <small style="color:var(--muted)">Forming & active agencies</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Saved Opportunities</div>
+        <div class="num">${savedOppsCount}</div>
+        <small style="color:var(--muted)">Bookmarked client & grant RFPs</small>
+      </div>
+      <div class="stat-box">
+        <div class="sub">Unread Notifications</div>
+        <div class="num">${unreadNotifs.length}</div>
+        <small style="color:var(--muted)">Platform updates</small>
+      </div>
+    </div>
+
+    <!-- Quick Action Navigation Hub (Section 7) -->
+    <div class="card" style="margin-bottom:24px;padding:18px 22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <strong style="font-size:.92rem;color:var(--forest);text-transform:uppercase;letter-spacing:.04em">Quick Navigation:</strong>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a class="btn btn-ghost btn-sm" href="#/app/profile">👤 My Talent Profile</a>
+          <a class="btn btn-ghost btn-sm" href="#/app/talent">🔍 Discover Talent</a>
+          <a class="btn btn-ghost btn-sm" href="#/app/agency">🏢 My Agencies</a>
+          <a class="btn btn-ghost btn-sm" href="#/app/opportunities">🚀 Opportunities</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Completion Meter Section -->
+    <div class="card" style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h2>Profile Completion</h2>
+        <div class="big" style="font-size:1.8rem;color:var(--emerald);margin:0">${c.pct}%</div>
+      </div>
+      <div class="bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100">
+        <i style="width:${c.pct}%"></i>
+      </div>
+      ${missing.length ? `
+        <p class="c-sub" style="margin:12px 0 8px">Complete profiles help agency founders and collaborators discover you faster:</p>
+        <ul class="todo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px">${missing.map(i => `<li><a href="#/app/${i[2]}">${esc(i[0])}</a></li>`).join("")}</ul>
+      ` : `<p class="c-sub" style="margin-top:10px">Your student talent profile is 100% comprehensive and verified across the ecosystem.</p>`}
+    </div>
+
     <!-- Agency Membership & Status Section -->
-    <div class="card" style="margin-bottom:20px;border-left:5px solid var(--emerald)">
+    <div class="card" style="margin-bottom:24px;border-left:5px solid var(--emerald)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
         <div>
           <h2>Agency Membership & Enterprise</h2>
-          <p class="c-sub">TeamBud allows students to build and run independent agency businesses together.</p>
+          <p class="c-sub">TeamBud allows students to build and run independent agency businesses together (3 to 10 members).</p>
         </div>
         <div>
-          <a class="btn btn-ghost btn-sm" href="#/create-agency">Create New Agency</a>
+          <a class="btn btn-ghost btn-sm" href="#/create-agency">+ Create Agency</a>
           <a class="btn btn-quiet btn-sm" href="#/marketplace">Browse Marketplace</a>
         </div>
       </div>
@@ -1956,7 +2471,7 @@ function pageOverview(u) {
                   ${myMem && myMem.customRoleDesc ? `<div style="font-size:.8rem;color:var(--muted);margin-top:2px">${esc(myMem.customRoleDesc)}</div>` : ""}
                 </div>
                 <div style="display:flex;gap:8px">
-                  <a class="btn btn-primary btn-sm btn-block" href="#/agency-hub/${a.id}">Open Team Dashboard</a>
+                  <a class="btn btn-primary btn-sm btn-block" href="#/agency-hub/${a.id}">Open Team Workspace</a>
                   <a class="btn btn-ghost btn-sm" href="#/agency/${a.slug}" title="View Public Profile">Public View</a>
                 </div>
               </div>`;
@@ -1967,7 +2482,7 @@ function pageOverview(u) {
           <p style="font-size:1rem;margin-bottom:12px">You are not part of an agency team yet.</p>
           <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
             <a class="btn btn-primary" href="#/create-agency">Create an Agency</a>
-            <a class="btn btn-ghost" href="#/app/discover">Find Teammates</a>
+            <a class="btn btn-ghost" href="#/app/talent">Find Teammates on Talent Hub</a>
           </div>
         </div>
       `}
@@ -1975,7 +2490,7 @@ function pageOverview(u) {
 
     <!-- Pending Invitations -->
     ${pendingInvites.length ? `
-      <div class="card" style="margin-bottom:20px;border-left:5px solid var(--lime)">
+      <div class="card" style="margin-bottom:24px;border-left:5px solid var(--lime)">
         <h2>Pending Agency Invitations (${pendingInvites.length})</h2>
         <p class="c-sub">You have been invited to join an agency team. Review your role before accepting.</p>
         <ul class="list" style="margin-top:14px">
@@ -1984,7 +2499,7 @@ function pageOverview(u) {
               <div>
                 <strong>${esc(item.agency.name)}</strong>
                 <div style="font-size:.88rem;color:var(--muted)">Role: <span class="badge role">${esc(item.invite.role)}</span>${item.invite.customRoleDesc ? ` — ${esc(item.invite.customRoleDesc)}` : ""}</div>
-                <small>${esc(item.agency.institution)}, ${esc(item.agency.location)}</small>
+                <small>${esc(item.agency.institution)}, ${esc(item.agency.location)} · Team: ${item.agency.members.length}/10</small>
               </div>
               <span class="acts">
                 <button class="btn btn-primary btn-sm" data-act="accept-agency-invite" data-agency-id="${item.agency.id}" data-invite-id="${item.invite.id}">Accept</button>
@@ -1996,41 +2511,68 @@ function pageOverview(u) {
       </div>
     ` : ""}
 
-    <div class="cols3" style="margin-bottom:18px">
-      <div class="card" style="grid-column:span 2">
-        <h2>Profile completion</h2>
-        <div class="big">${c.pct}%</div>
-        <div class="bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100">
-          <i style="width:${c.pct}%"></i>
+    <!-- Complementary Skill-Based Recommendations (Section 7 & 8) -->
+    <div class="card" style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <h2>Complementary Talent Recommendations</h2>
+          <p class="c-sub">Collaborators with skills that complete your multidisciplinary agency team.</p>
         </div>
-        ${missing.length ? `
-          <p class="c-sub" style="margin-bottom:8px">Complete profiles help teammates discover you faster:</p>
-          <ul class="todo">${missing.map(i => `<li><a href="#/app/${i[2]}">${esc(i[0])}</a></li>`).join("")}</ul>
-        ` : `<p class="c-sub">Your student profile is comprehensive and verified.</p>`}
+        <a class="btn btn-ghost btn-sm" href="#/app/talent">Browse All Students ↗</a>
       </div>
 
-      <div class="card">
-        <h2>Quick Actions</h2>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-          <a class="btn btn-ghost btn-sm" href="#/create-agency">${icon("M12 4v16m8-8H4")} Start an Agency</a>
-          <a class="btn btn-ghost btn-sm" href="#/app/discover">${icon("M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z")} Discover Teammates</a>
-          <a class="btn btn-ghost btn-sm" href="#/marketplace">${icon("M3 3h2l.4 2M7 13h10l4-8H5.4")} Agency Marketplace</a>
+      ${compRecs.length ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+          ${compRecs.map(r => `
+            <div class="rec-card">
+              <div>
+                <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+                  ${avatar(r.o)}
+                  <div style="min-width:0;flex:1">
+                    <strong style="font-size:1rem;color:var(--forest);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.o.name)}</strong>
+                    <small style="color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.o.department)}, ${esc(r.o.institution)}</small>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+                  ${(r.o.skills || []).slice(0, 3).map(s => `<span class="talent-skill-tag">${esc(s.name)}</span>`).join("")}
+                </div>
+
+                <div style="background:var(--white);padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-size:.82rem;color:var(--forest);line-height:1.45;margin-bottom:12px">
+                  <strong>Why recommended:</strong> ${esc(r.why)}
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--line)">
+                <a class="btn btn-ghost btn-sm" href="#/talent/${esc(r.o.username)}" style="flex:1;text-align:center">View Profile</a>
+                <button class="btn btn-primary btn-sm" data-act="open-connect-modal" data-uid="${r.o.id}">Connect</button>
+              </div>
+            </div>
+          `).join("")}
         </div>
-      </div>
+      ` : `
+        <div class="empty">Add your primary skills and interests to see tailored complementary suggestions. <a href="#/app/skills">Add skills</a></div>
+      `}
     </div>
 
     <div class="cols">
+      <!-- Pending Connection Requests -->
       <div class="card">
-        <h2>Connection requests</h2>
-        <p class="c-sub">Accept requests to collaborate with other students.</p>
+        <h2>Connection Requests (${inc.length})</h2>
+        <p class="c-sub">Students who want to connect and build teams with you.</p>
         ${inc.length ? `
-          <ul class="list">${inc.map(c => {
+          <ul class="list" style="margin-top:12px">${inc.map(c => {
             const o = userById(c.from);
-            return `<li class="row">
+            if (!o) return "";
+            return `<li class="row" style="padding:14px 0">
               <div class="who">${avatar(o)}
-                <div><strong>${esc(o.name)}</strong><small>${esc(o.department)}, ${esc(o.institution)}</small></div>
+                <div>
+                  <strong>${esc(o.name)}</strong>
+                  <small>${esc(o.department)}, ${esc(o.institution)}</small>
+                  ${c.note ? `<div style="font-size:.82rem;color:var(--forest);background:var(--ivory);padding:6px 10px;border-radius:6px;margin-top:6px;border:1px solid var(--line)">"${esc(c.note)}"</div>` : ""}
+                </div>
               </div>
-              <span class="acts">
+              <span class="acts" style="flex-direction:column;gap:6px">
                 <button class="btn btn-primary btn-sm" data-act="accept" data-id="${c.id}">Accept</button>
                 <button class="btn btn-quiet btn-sm" data-act="decline" data-id="${c.id}">Decline</button>
               </span>
@@ -2039,20 +2581,903 @@ function pageOverview(u) {
         ` : `<div class="empty">No pending connection requests.</div>`}
       </div>
 
+      <!-- Recent Activity Log -->
       <div class="card">
-        <h2>Recommended students</h2>
-        <p class="c-sub">Students with complementary skills who can complete your team.</p>
-        ${rec.length ? `
-          <ul class="list">${rec.map(o => miniStudent(u, o)).join("")}</ul>
-        ` : `<div class="empty">Add skills and interests to see tailored recommendations. <a href="#/app/discover">Browse students</a></div>`}
+        <h2>Recent Activity</h2>
+        <p class="c-sub">Your recent milestones and connections on TeamBud.</p>
+        ${acts.length ? `
+          <ul class="list acts-log" style="margin-top:12px">${acts.map(a => `<li><span>${esc(a.text)}</span><time>${rel(a.t)}</time></li>`).join("")}</ul>
+        ` : `<div class="empty">No recent activity recorded yet.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ===================== Talent Hub & Student Showcase System ===================== */
+let activeTalentCategory = "all";
+
+function pageTalentHub(u) {
+  const allDepts = [...new Set(students().map(s => s.department).filter(Boolean))].sort();
+  const allInsts = [...new Set(students().map(s => s.institution).filter(Boolean))].sort();
+  const allLocs = [...new Set(students().map(s => loc(s)).filter(Boolean))].sort();
+  const allSkills = [...new Set(students().flatMap(s => (s.skills || []).map(sk => sk.name)).filter(Boolean))].sort();
+
+  return `
+    <div class="talent-hero">
+      <h1>Discover the People Behind the Skills.</h1>
+      <p>Every student has something valuable to contribute. Explore talented students from different institutions and disciplines, discover what they can do, and connect with people who may become your next collaborators, teammates or business partners.</p>
+      <div class="talent-hero-acts">
+        <a class="btn-lime" href="${u && u.role === 'student' ? '#/app/profile' : '#/register'}">SHOWCASE YOUR TALENT ↗</a>
+        <a class="btn-ghost-light" href="#talent-directory" onclick="document.getElementById('talent-directory')?.scrollIntoView({behavior:'smooth'})">EXPLORE TALENT ↓</a>
+      </div>
+    </div>
+
+    <div id="talent-directory">
+      <!-- Category selector chips -->
+      <div class="talent-cats" id="talent-cats-bar">
+        ${[
+          ["all", "All Categories"],
+          ["tech", "Technology & Software"],
+          ["design", "Creative & Design"],
+          ["marketing", "Marketing & Growth"],
+          ["business", "Business & Strategy"],
+          ["finance", "Finance & Accounting"],
+          ["writing", "Writing & Content"],
+          ["engineering", "Engineering & Technical"],
+          ["agric", "Agriculture & Agribusiness"],
+          ["fashion", "Fashion & Arts"],
+          ["education", "Education & Training"]
+        ].map(([slug, name]) => `
+          <button class="talent-cat-btn ${activeTalentCategory === slug ? 'active' : ''}" data-act="filter-talent-cat" data-cat="${slug}">${esc(name)}</button>
+        `).join("")}
       </div>
 
-      <div class="card">
-        <h2>Recent activity</h2>
-        <p class="c-sub">Your recent actions and milestones on TeamBud.</p>
-        ${acts.length ? `
-          <ul class="list acts-log">${acts.map(a => `<li><span>${esc(a.text)}</span><time>${rel(a.t)}</time></li>`).join("")}</ul>
-        ` : `<div class="empty">No recent activity.</div>`}
+      <!-- Filters & Search Bar -->
+      <div class="card" style="margin-bottom:24px;padding:22px" id="dfilters">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+          <div style="grid-column:1/-1">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Search by name, skill, institution, or keyword</label>
+            <input type="text" id="t-search" placeholder="e.g. Sulaiman, React, Lagos, Brand Identity, Computer Science..." data-live="talent" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.95rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Skill</label>
+            <input type="text" id="t-skill" list="talent-skills-list" placeholder="Filter by skill..." data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+            <datalist id="talent-skills-list">
+              ${allSkills.map(s => `<option value="${esc(s)}">`).join("")}
+            </datalist>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Institution</label>
+            <select id="t-inst" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Institutions</option>
+              ${allInsts.map(i => `<option value="${esc(i)}">${esc(i)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Department</label>
+            <select id="t-dept" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Departments</option>
+              ${allDepts.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Location / State</label>
+            <select id="t-loc" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Locations</option>
+              ${allLocs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Experience Level</label>
+            <select id="t-exp" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Experience Levels</option>
+              <option value="Beginner">Beginner (Under 1 yr)</option>
+              <option value="Intermediate">Intermediate (1-2 yrs)</option>
+              <option value="Advanced">Advanced (2-4 yrs)</option>
+              <option value="Expert">Expert / Lead (4+ yrs)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Availability</label>
+            <select id="t-avail" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">Any Availability</option>
+              <option value="now">Available Now</option>
+              <option value="part">Available Part-Time</option>
+              <option value="later">Specific Projects</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Checkbox intents & Sort -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding-top:14px;border-top:1px solid var(--line)">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:.82rem;font-weight:700;color:var(--forest)">Intent:</span>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-agency" data-live="talent"> Open to agency
+            </label>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-biz" data-live="talent"> Interested in starting a business
+            </label>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-freelance" data-live="talent"> Available for freelance
+            </label>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px">
+            <label for="t-sort" style="font-size:.82rem;font-weight:700;color:var(--forest)">Sort by:</label>
+            <select id="t-sort" data-live="talent" style="padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:.85rem">
+              <option value="recent">Recently Joined</option>
+              <option value="updated">Recently Updated</option>
+              <option value="complete">Most Complete Profile</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Talent Cards Container -->
+      <div id="talent-results" aria-live="polite"></div>
+    </div>
+  `;
+}
+
+function talentHubResults() {
+  const container = $("#talent-results");
+  if (!container) return;
+  const q = ($("#t-search") ? $("#t-search").value : "").trim().toLowerCase();
+  const sk = ($("#t-skill") ? $("#t-skill").value : "").trim().toLowerCase();
+  const inst = ($("#t-inst") ? $("#t-inst").value : "").trim();
+  const dept = ($("#t-dept") ? $("#t-dept").value : "").trim();
+  const lo = ($("#t-loc") ? $("#t-loc").value : "").trim();
+  const exp = ($("#t-exp") ? $("#t-exp").value : "").trim();
+  const av = ($("#t-avail") ? $("#t-avail").value : "").trim();
+  const onlyAgency = $("#t-agency") ? $("#t-agency").checked : false;
+  const onlyBiz = $("#t-biz") ? $("#t-biz").checked : false;
+  const onlyFreelance = $("#t-freelance") ? $("#t-freelance").checked : false;
+  const sortBy = ($("#t-sort") ? $("#t-sort").value : "recent");
+
+  let list = students();
+
+  // Category filter
+  if (activeTalentCategory && activeTalentCategory !== "all") {
+    const catMap = {
+      tech: "Technology and Software Development",
+      design: "Graphics and Brand Design",
+      marketing: "Digital Marketing",
+      business: "Business Consulting",
+      finance: "Finance and Accounting",
+      writing: "Writing and Communication",
+      engineering: "Engineering and Technical Services",
+      agric: "Agriculture and Agribusiness",
+      fashion: "Fashion and Creative Arts",
+      education: "Education and Training"
+    };
+    const targetCat = catMap[activeTalentCategory];
+    if (targetCat) {
+      list = list.filter(s => s.category === targetCat || (s.collab || []).includes(targetCat) || (s.skills || []).some(k => (k.category || "").includes(targetCat) || (k.name || "").toLowerCase().includes(activeTalentCategory)));
+    }
+  }
+
+  // Text search
+  if (q) {
+    list = list.filter(s => 
+      s.name.toLowerCase().includes(q) ||
+      s.username.toLowerCase().includes(q) ||
+      (s.headline || "").toLowerCase().includes(q) ||
+      (s.bio || "").toLowerCase().includes(q) ||
+      (s.department || "").toLowerCase().includes(q) ||
+      (s.institution || "").toLowerCase().includes(q) ||
+      (s.skills || []).some(k => k.name.toLowerCase().includes(q))
+    );
+  }
+
+  if (sk) list = list.filter(s => (s.skills || []).some(k => k.name.toLowerCase().includes(sk)));
+  if (inst) list = list.filter(s => s.institution === inst);
+  if (dept) list = list.filter(s => s.department === dept);
+  if (lo) list = list.filter(s => loc(s) === lo);
+  if (exp) list = list.filter(s => (s.experienceLevel || "").toLowerCase().includes(exp.toLowerCase()));
+  if (av) list = list.filter(s => s.availability === av);
+  if (onlyAgency) list = list.filter(s => (s.lookingFor || []).includes("join_agency") || (s.intents || []).includes("join"));
+  if (onlyBiz) list = list.filter(s => (s.lookingFor || []).includes("create_agency") || (s.intents || []).includes("create"));
+  if (onlyFreelance) list = list.filter(s => (s.lookingFor || []).includes("freelance"));
+
+  // Sorting
+  if (sortBy === "recent") {
+    list.sort((a, b) => (b.created || 0) - (a.created || 0));
+  } else if (sortBy === "updated") {
+    list.sort((a, b) => (b.updated || b.created || 0) - (a.updated || a.created || 0));
+  } else if (sortBy === "complete") {
+    const score = s => (s.photo ? 20 : 0) + (s.bio ? 20 : 0) + ((s.skills || []).length * 10) + ((s.portfolio || []).length * 15) + ((s.experience || []).length * 10);
+    list.sort((a, b) => score(b) - score(a));
+  }
+
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="empty" style="padding:48px 24px;text-align:center">
+        <h3 style="font-size:1.2rem;color:var(--forest);margin-bottom:6px">No talent profiles matched your filters</h3>
+        <p style="color:var(--muted);margin-bottom:16px">Try widening your search terms or clearing one of your filters.</p>
+        <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('#dfilters input, #dfilters select, #talent-directory input, #talent-directory select').forEach(e => { if(e.type==='checkbox') e.checked=false; else e.value=''; }); talentHubResults();">Clear all filters</button>
+      </div>
+    `;
+    return;
+  }
+
+  const u = me();
+  container.innerHTML = `
+    <div style="margin-bottom:14px;font-size:.88rem;color:var(--muted)">Showing <strong>${list.length}</strong> talented student${list.length === 1 ? "" : "s"} across Nigeria</div>
+    <div class="talent-grid">
+      ${list.map(s => renderTalentCard(s, u)).join("")}
+    </div>
+  `;
+}
+
+function renderTalentCard(s, u) {
+  const availMap = {
+    now: { cls: "active", label: "● Available now" },
+    part: { cls: "forming", label: "◐ Part-time" },
+    later: { cls: "role", label: "○ Project-based" },
+    no: { cls: "needs-members", label: "✕ Unavailable" },
+    unset: { cls: "role", label: "Open" }
+  };
+  const av = availMap[s.availability] || availMap.unset;
+  const portfolioCount = (s.portfolio || []).length;
+  const isSelf = u && u.id === s.id;
+
+  return `
+    <div class="talent-card">
+      <div>
+        <div class="talent-head">
+          <a href="#/talent/${esc(s.username)}" style="text-decoration:none">
+            ${s.photo ? `<img class="talent-avatar" src="${esc(s.photo)}" alt="${esc(s.name)}">` : `<div class="talent-avatar" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:1.3rem">${esc(initials(s.name))}</div>`}
+          </a>
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <a href="#/talent/${esc(s.username)}" style="text-decoration:none;color:var(--forest)"><strong style="font-size:1.05rem;font-family:var(--head)">${esc(s.name)}</strong></a>
+              <span class="badge verified" style="font-size:.7rem;padding:2px 7px">✓ Verified</span>
+            </div>
+            <div class="talent-meta-unboxed">
+              ${esc(s.institution)} · ${esc(s.department)}${s.showLevel !== false && s.level ? ` · ${esc(s.level)}` : ""}
+            </div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:2px">📍 ${esc(loc(s))}</div>
+          </div>
+        </div>
+
+        <div class="talent-headline">${esc(s.headline || (s.department + " Student"))}</div>
+
+        ${s.bio ? `<p style="font-size:.88rem;color:var(--forest);margin-bottom:12px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(s.bio)}</p>` : ""}
+
+        <div class="talent-skills">
+          ${(s.skills || []).slice(0, 4).map(sk => `<span class="talent-skill-tag">${esc(sk.name)}${sk.level ? ` · <span style="color:var(--emerald);font-weight:700">${esc(sk.level)}</span>` : ""}</span>`).join("")}
+          ${(s.skills || []).length > 4 ? `<span class="talent-skill-tag" style="background:none;border:1px dashed var(--line)">+${s.skills.length - 4} more</span>` : ""}
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:.78rem">
+          <span class="badge ${av.cls}">${av.label}</span>
+          ${portfolioCount ? `<span style="color:var(--emerald);font-weight:700">✦ ${portfolioCount} Project${portfolioCount > 1 ? "s" : ""}</span>` : `<span style="color:var(--muted)">Portfolio active</span>`}
+        </div>
+
+        <div class="talent-card-foot">
+          <a class="btn btn-ghost btn-sm" href="#/talent/${esc(s.username)}" style="flex:1;text-align:center">VIEW PROFILE</a>
+          ${isSelf 
+            ? `<a class="btn btn-quiet btn-sm" href="#/app/profile">Edit</a>` 
+            : (u ? connBtn(u, s) : `<button class="btn btn-primary btn-sm" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect</button>`)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+let obStep = 1;
+
+function pageOnboarding(u) {
+  ensureStudentDefaults(u);
+  const c = completion(u);
+  const commonSkills = [
+    "UI/UX Design", "Figma", "Web Development", "React",
+    "Mobile Development", "Flutter", "Python", "Node.js",
+    "Content Writing", "Copywriting", "SEO", "Social Media Marketing",
+    "Graphic Design", "Brand Strategy", "Video Editing", "Data Analysis",
+    "Project Management", "Digital Marketing"
+  ];
+
+  const userSkillNames = (u.skills || []).map(s => s.name);
+
+  return `
+    ${protoBar()}
+    <div style="max-width:820px;margin:30px auto 80px;padding:0 20px">
+      <!-- Top Brand & Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
+        <a class="btn btn-quiet btn-sm" href="#/app/overview">Skip to Dashboard ↗</a>
+      </div>
+
+      <div class="onboarding-wrap">
+        <!-- Stepper -->
+        <div class="onboarding-stepper">
+          ${[
+            [1, "Basic Info"],
+            [2, "Your Talents"],
+            [3, "Experience"],
+            [4, "Interests"],
+            [5, "Portfolio"],
+            [6, "Complete"]
+          ].map(([num, label]) => `
+            <div class="ob-step-node ${obStep === num ? "active" : (obStep > num ? "completed" : "")}" data-act="set-ob-step" data-step="${num}">
+              <div class="ob-step-circle">${obStep > num ? "✓" : num}</div>
+              <span class="ob-step-label">${label}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <!-- Beneficial Reminders Banner -->
+        <div style="background:var(--ivory);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="font-size:.86rem;color:var(--forest)">
+            💡 <strong>Why showcase your talents?</strong> Complete profiles receive 4x more agency invitations, connection requests, and client opportunities.
+          </div>
+          <span style="font-size:.82rem;font-weight:700;color:var(--emerald);white-space:nowrap">${c.pct}% Complete</span>
+        </div>
+
+        <!-- Step 1: Basic Information -->
+        ${obStep === 1 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 1: Basic Information</h2>
+            <p class="c-sub" style="margin-bottom:20px">Introduce yourself to fellow student collaborators across Nigerian tertiary institutions.</p>
+            
+            <form data-form="ob-step-1" novalidate>
+              <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
+                ${avatar(u, true)}
+                <div>
+                  <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+                    Upload Profile Picture <input type="file" accept="image/*" data-live="photo" style="display:none">
+                  </label>
+                  <small style="display:block;color:var(--muted);margin-top:4px">Professional portrait helps collaborators recognize you.</small>
+                </div>
+              </div>
+
+              <div class="grid2">
+                <div class="full">
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Full Name *</label>
+                  <input type="text" name="name" class="inp" value="${esc(u.name)}" required>
+                </div>
+
+                <div class="full">
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Professional Headline</label>
+                  <input type="text" name="headline" class="inp" value="${esc(u.headline || "")}" placeholder="e.g. Lead Brand Strategist & React Developer">
+                </div>
+
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Institution *</label>
+                  <input type="text" name="institution" class="inp" list="inst-list" value="${esc(u.institution)}" required>
+                  <datalist id="inst-list">${INSTITUTIONS.map(i => `<option value="${esc(i)}">`).join("")}</datalist>
+                </div>
+
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Department *</label>
+                  <input type="text" name="department" class="inp" value="${esc(u.department)}" required>
+                </div>
+
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Academic Level *</label>
+                  <select name="level" class="inp">${opts(LEVELS, u.level)}</select>
+                </div>
+
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">State / Location *</label>
+                  <input type="text" name="state" class="inp" value="${esc(u.state || "")}" placeholder="e.g. Lagos, Oyo, Abuja">
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+                <a class="btn btn-quiet" href="#/app/overview">Save & Continue Later</a>
+                <button class="btn btn-primary" type="submit">Next: Your Talents →</button>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Step 2: Your Talents -->
+        ${obStep === 2 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 2: What Skills Do You Currently Have?</h2>
+            <p class="c-sub" style="margin-bottom:20px">Select the skills you practice, from design and coding to content strategy and marketing.</p>
+
+            <form data-form="ob-step-2" novalidate>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px">
+                ${commonSkills.map(sk => `
+                  <label class="chk" style="padding:10px;background:var(--ivory);border:1px solid var(--line);border-radius:8px">
+                    <input type="checkbox" name="skills" value="${esc(sk)}" ${userSkillNames.includes(sk) ? "checked" : ""}>
+                    <strong>${esc(sk)}</strong>
+                  </label>
+                `).join("")}
+              </div>
+
+              <!-- Add custom skill -->
+              <div style="background:var(--sage);padding:16px;border-radius:12px;margin-bottom:20px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--forest);display:block;margin-bottom:6px">Add a Custom Skill</label>
+                <div style="display:flex;gap:10px">
+                  <input type="text" id="ob-custom-skill-inp" class="inp" placeholder="e.g. Solidity, 3D Blender, Motion Graphics" style="flex:1">
+                  <button type="button" class="btn btn-primary btn-sm" data-act="ob-add-custom-skill">+ Add</button>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+                <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="1">← Previous</button>
+                <div style="display:flex;gap:10px">
+                  <a class="btn btn-quiet" href="#/app/overview">Save & Continue Later</a>
+                  <button class="btn btn-primary" type="submit">Next: Your Experience →</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Step 3: Your Experience -->
+        ${obStep === 3 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 3: What Is Your Experience Level?</h2>
+            <p class="c-sub" style="margin-bottom:20px">Be honest about where you are. TeamBud welcomes beginners as well as experienced student practitioners.</p>
+
+            <form data-form="ob-step-3" novalidate>
+              <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+                ${[
+                  ["Still learning", "Still learning — developing fundamentals and building first tutorial or classroom exercises."],
+                  ["Personal projects", "Personal projects — have completed coursework, tutorials, and solo demo builds."],
+                  ["Projects with others", "Projects with others — have collaborated on team projects, student hackathons, or group builds."],
+                  ["Worked with clients", "Worked with clients — have delivered paid or volunteer services for external businesses or campus clubs."],
+                  ["Professional experience", "Professional experience — extensive track record, agency execution, or tech industry internships."]
+                ].map(([val, desc]) => `
+                  <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--ivory);border:1px solid var(--line);border-radius:10px;cursor:pointer">
+                    <input type="radio" name="experienceLevel" value="${esc(val)}" ${(u.experienceLevel || "Personal projects").includes(val) ? "checked" : ""} style="margin-top:3px">
+                    <div>
+                      <strong style="display:block;color:var(--forest);font-size:.95rem">${esc(val)}</strong>
+                      <small style="color:var(--muted);font-size:.85rem">${esc(desc)}</small>
+                    </div>
+                  </label>
+                `).join("")}
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+                <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="2">← Previous</button>
+                <div style="display:flex;gap:10px">
+                  <a class="btn btn-quiet" href="#/app/overview">Save & Continue Later</a>
+                  <button class="btn btn-primary" type="submit">Next: Your Interests →</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Step 4: Your Interests -->
+        ${obStep === 4 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 4: What Would You Like to Do on TeamBud?</h2>
+            <p class="c-sub" style="margin-bottom:20px">Select the collaboration goals and opportunities that interest you most:</p>
+
+            <form data-form="ob-step-4" novalidate>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:24px">
+                ${LOOKING_FOR_OPTIONS.map(opt => `
+                  <label class="chk" style="padding:14px;background:var(--ivory);border:1px solid var(--line);border-radius:10px">
+                    <input type="checkbox" name="lookingFor" value="${esc(opt.id)}" ${(u.lookingFor || []).includes(opt.id) ? "checked" : ""}>
+                    <span style="font-size:1.2rem">${opt.icon}</span>
+                    <strong style="display:block;margin-top:4px">${esc(opt.label)}</strong>
+                  </label>
+                `).join("")}
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+                <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="3">← Previous</button>
+                <div style="display:flex;gap:10px">
+                  <a class="btn btn-quiet" href="#/app/overview">Save & Continue Later</a>
+                  <button class="btn btn-primary" type="submit">Next: Portfolio (Optional) →</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Step 5: Portfolio (Optional) -->
+        ${obStep === 5 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 5: Portfolio & Work Samples (Optional)</h2>
+            <p class="c-sub" style="margin-bottom:20px">Add a sample project or work link. You can also skip this step and add projects anytime from My Portfolio.</p>
+
+            <form data-form="ob-step-5" novalidate>
+              <div class="grid2">
+                <div class="full">
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Sample Project Title</label>
+                  <input type="text" name="projTitle" class="inp" placeholder="e.g. Campus Marketplace App or Fintech UI Redesign">
+                </div>
+                <div class="full">
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Project Description</label>
+                  <textarea name="projDesc" rows="3" class="inp" placeholder="Briefly describe what you built, what tools you used, and what problem it solved."></textarea>
+                </div>
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Live URL or GitHub Repo</label>
+                  <input type="url" name="projUrl" class="inp" placeholder="https://...">
+                </div>
+                <div>
+                  <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Category</label>
+                  <select name="projCategory" class="inp">
+                    <option value="Web Development">Web Development</option>
+                    <option value="UI/UX Design">UI/UX Design</option>
+                    <option value="Mobile App">Mobile App</option>
+                    <option value="Branding & Content">Branding & Content</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+                <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="4">← Previous</button>
+                <div style="display:flex;gap:10px">
+                  <button type="submit" class="btn btn-ghost">Skip & View Summary</button>
+                  <button class="btn btn-primary" type="submit">Save & Review Profile →</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        ` : ""}
+
+        <!-- Step 6: Complete Profile -->
+        ${obStep === 6 ? `
+          <div>
+            <h2 style="font-size:1.5rem;color:var(--forest);margin-bottom:6px">Step 6: Profile Ready!</h2>
+            <p class="c-sub" style="margin-bottom:20px">Here is a summary of your student talent presence on TeamBud:</p>
+
+            <div style="background:var(--ivory);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:24px">
+              <div style="display:flex;gap:18px;align-items:center;margin-bottom:16px">
+                ${avatar(u)}
+                <div>
+                  <h3 style="font-size:1.3rem;margin:0 0 4px">${esc(u.name)}</h3>
+                  <div style="color:var(--emerald);font-weight:600">${esc(u.headline || u.department + " Student")}</div>
+                  <small style="color:var(--muted)">${esc(u.department)}, ${esc(u.institution)} · ${esc(loc(u))}</small>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0">
+                ${(u.skills || []).map(s => `<span class="tag">${esc(s.name)} · ${esc(s.level || "Intermediate")}</span>`).join("")}
+              </div>
+
+              <div style="font-size:.9rem;color:var(--forest);margin-top:12px">
+                <strong>Experience:</strong> ${esc(u.experienceLevel || "Personal projects")}
+              </div>
+            </div>
+
+            <!-- Profile completion meter -->
+            <div style="margin-bottom:24px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <strong style="color:var(--forest)">Profile Completion</strong>
+                <strong style="color:var(--emerald)">${c.pct}%</strong>
+              </div>
+              <div class="bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100">
+                <i style="width:${c.pct}%"></i>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
+              <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="5">← Previous</button>
+              <button type="button" class="btn btn-primary" data-act="finish-onboarding">Finish & Launch Dashboard 🚀</button>
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function viewStudentTalentProfile(username, u) {
+  const s = db.users.find(x => x.username === username && x.role === "student");
+  if (!s) {
+    return `
+      ${protoBar()}
+      <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
+        <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Student Profile Not Found</h2>
+        <p style="color:var(--muted);margin-bottom:20px">The student username <strong>@${esc(username)}</strong> could not be located in our directory.</p>
+        <a class="btn btn-primary" href="#/talent">← Return to Talent Hub</a>
+      </div>
+    `;
+  }
+
+  ensureStudentDefaults(s);
+  const isOwner = u && u.id === s.id;
+  const isClient = u && u.role === "client";
+
+  const availMap = {
+    now: { cls: "active", label: "● Available now for client work and team collaborations" },
+    part: { cls: "forming", label: "◐ Available part-time (10-15 hrs/week)" },
+    later: { cls: "role", label: "○ Open to specific project milestones" },
+    no: { cls: "needs-members", label: "✕ Currently unavailable" },
+    unset: { cls: "role", label: "Availability open on request" }
+  };
+  const av = availMap[s.availability] || availMap.unset;
+
+  return `
+    ${protoBar()}
+    <div style="max-width:1160px;margin:0 auto;padding:20px 20px 80px">
+      <!-- Breadcrumb / Back Navigation -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <a class="back" href="#/talent" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--forest);text-decoration:none">
+          ← Back to Talent Hub
+        </a>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost btn-sm" data-act="share-profile" data-name="${esc(s.name)}" data-url="${window.location.href}">
+            ${icon("M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13")} Share Profile
+          </button>
+          ${isOwner ? `<a class="btn btn-primary btn-sm" href="#/app/profile">Edit My Talent Profile ↗</a>` : ""}
+        </div>
+      </div>
+
+      <!-- SECTION A: Profile Introduction -->
+      <div class="talent-prof-header">
+        <div class="talent-prof-top">
+          ${s.photo ? `<img class="talent-prof-avatar" src="${esc(s.photo)}" alt="${esc(s.name)}">` : `<div class="talent-prof-avatar" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:2.2rem;background:var(--sage)">${esc(initials(s.name))}</div>`}
+          <div style="flex:1;min-width:280px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <h1 style="font-size:2.1rem;font-weight:800;color:var(--forest);margin:0;letter-spacing:-0.02em">${esc(s.name)}</h1>
+              <span class="badge verified">✓ Verified Student</span>
+              ${s.demo ? `<span class="badge role">Demo</span>` : ""}
+            </div>
+            <div style="font-size:1.15rem;font-weight:600;color:var(--emerald);margin:6px 0 10px">${esc(s.headline || (s.department + " Student"))}</div>
+
+            <!-- Zero-Pill Unboxed Metadata -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.92rem;color:var(--muted);align-items:center;margin-bottom:12px">
+              <span>🏛️ ${esc(s.institution)}</span>
+              <span>·</span>
+              <span>📚 ${esc(s.department)}</span>
+              ${s.showLevel !== false && s.level ? `<span>·</span><span>🎓 ${esc(s.level)}</span>` : ""}
+              <span>·</span>
+              <span>📍 ${esc(loc(s))}</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+              <span class="badge ${av.cls}">${av.label}</span>
+              <span style="font-size:.85rem;color:var(--forest);font-weight:600">Level: <strong>${esc(s.experienceLevel || "Intermediate")}</strong></span>
+            </div>
+
+            <div class="talent-prof-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              ${isOwner 
+                ? `<a class="btn btn-primary" href="#/app/profile">Edit My Talent Profile</a>` 
+                : (isClient 
+                    ? `<a class="btn btn-primary" href="#/client">Commission Student Agency</a>` 
+                    : (u ? `
+                        ${connBtn(u, s)}
+                        ${(userAgencies(u.id).filter(a => isAgencyOwnerOrManager(a, u.id) && (a.members || []).length < 10 && !(a.members || []).some(m => m.userId === s.id))).length ? `<button class="btn btn-ghost" data-act="open-invite-agency-modal" data-student-id="${s.id}">+ Invite to My Agency</button>` : ""}
+                        <button class="btn btn-quiet btn-sm" data-act="open-report-modal" data-target-id="${s.id}" data-target-name="${esc(s.name)}" style="color:var(--muted)">Report / Block</button>
+                      ` : `<button class="btn btn-primary" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect With Student</button>`))}
+            </div>
+          </div>
+        </div>
+
+        <!-- Bio Summary -->
+        ${s.bio ? `
+          <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">
+            <p style="font-size:1.02rem;line-height:1.65;color:var(--forest);margin:0;max-width:860px">${esc(s.bio)}</p>
+          </div>
+        ` : ""}
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px" class="prof-layout-grid">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- SECTION B: About Me -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>About Me</h2>
+              ${isOwner ? `<a href="#/app/profile" class="btn btn-quiet btn-sm">Edit</a>` : ""}
+            </div>
+            <p style="font-size:.98rem;line-height:1.7;color:var(--forest);margin-bottom:16px">${esc(s.aboutMe || s.bio || "Student collaborator on TeamBud.")}</p>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:16px;background:var(--ivory);padding:18px;border-radius:14px;border:1px solid var(--line)">
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Primary Discipline</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.category || s.department)}</div>
+              </div>
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Experience Tier</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.experienceLevel || "Intermediate (1-2 yrs)")}</div>
+              </div>
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Campus Location</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.institution)} (${esc(loc(s))})</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION C: My Skills -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Skills & Capabilities</h2>
+              ${isOwner ? `<a href="#/app/skills" class="btn btn-quiet btn-sm">+ Add Skill</a>` : ""}
+            </div>
+
+            <!-- Platform Disclaimer Notice -->
+            <div class="disclaimer-banner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <strong>TeamBud Platform Notice:</strong>
+                Skills listed below are self-declared by the student to demonstrate hands-on practice, tools mastery, and project execution interest. They do not constitute formal institutional accreditation or statutory licensing.
+              </div>
+            </div>
+
+            ${(s.skills || []).length ? `
+              <div class="talent-skill-grid">
+                ${s.skills.map(sk => {
+                  const percMap = { Learning: 25, Beginner: 45, Intermediate: 75, Advanced: 95 };
+                  const p = percMap[sk.level] || 60;
+                  return `
+                    <div class="talent-skill-card">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <strong style="font-size:1rem;color:var(--forest)">${esc(sk.name)}</strong>
+                        <span class="badge ${sk.level === "Advanced" ? "active" : "role"}" style="font-size:.7rem">${esc(sk.level || "Intermediate")}</span>
+                      </div>
+                      <div class="skill-bar-wrap">
+                        <div class="skill-bar-fill" style="width:${p}%"></div>
+                      </div>
+                      <div style="font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between;margin-top:4px">
+                        <span>${sk.duration || "Active practice"}</span>
+                        <span>${sk.pro ? "Commercial ready" : "Collaborative"}</span>
+                      </div>
+                      ${sk.desc ? `<p style="font-size:.82rem;color:var(--forest);margin-top:6px;line-height:1.4">${esc(sk.desc)}</p>` : ""}
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            ` : `<div class="empty">No skills catalogued yet.</div>`}
+          </div>
+
+          <!-- SECTION D: My Portfolio (Rich Project Showcase) -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Portfolio Showcase</h2>
+              ${isOwner ? `<button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Project</button>` : ""}
+            </div>
+
+            ${(s.portfolio || []).length ? `
+              <div class="talent-portfolio-grid">
+                ${s.portfolio.map(p => `
+                  <div class="talent-portfolio-item">
+                    <div class="portfolio-img-box">
+                      ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title || p.label)}">` : `
+                        <div style="text-align:center;padding:20px">
+                          <div style="font-size:2rem;margin-bottom:4px">📁</div>
+                          <span style="font-weight:700;color:var(--forest);font-size:.9rem">${esc(p.title || p.label || "Project")}</span>
+                        </div>
+                      `}
+                    </div>
+                    <div style="padding:20px;display:flex;flex-direction:column;flex:1;justify-content:space-between">
+                      <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                          <span class="badge role" style="font-size:.7rem">${esc(p.category || "Project")}</span>
+                          ${p.date ? `<span style="font-size:.78rem;color:var(--muted)">${esc(p.date)}</span>` : ""}
+                        </div>
+                        <h3 style="font-size:1.15rem;font-weight:800;color:var(--forest);margin:0 0 8px">${esc(p.title || p.label)}</h3>
+                        <p style="font-size:.88rem;color:var(--forest);line-height:1.5;margin-bottom:12px">${esc(p.description || "Portfolio work showcase.")}</p>
+
+                        ${(p.tools || []).length ? `
+                          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+                            ${p.tools.map(t => `<span style="font-size:.74rem;background:var(--sage);color:var(--forest);padding:2px 7px;border-radius:4px;font-weight:600">${esc(t)}</span>`).join("")}
+                          </div>
+                        ` : ""}
+
+                        ${p.contribution ? `
+                          <div style="font-size:.82rem;color:var(--muted);background:var(--ivory);padding:8px 12px;border-radius:8px;margin-bottom:12px">
+                            <strong>Role:</strong> ${esc(p.contribution)}
+                          </div>
+                        ` : ""}
+                      </div>
+
+                      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+                        ${p.url ? `<a class="btn btn-ghost btn-sm" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">View Project ↗</a>` : ""}
+                        ${isOwner ? `<button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}">Remove</button>` : ""}
+                      </div>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            ` : `
+              <div class="empty">
+                <p>No showcase projects uploaded yet.</p>
+                ${isOwner ? `<button class="btn btn-primary btn-sm" data-act="modal-add-proj" style="margin-top:10px">+ Add your first project</button>` : ""}
+              </div>
+            `}
+          </div>
+
+          <!-- SECTION E: Experience & Certifications -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Experience & Leadership</h2>
+              ${isOwner ? `<a href="#/app/profile" class="btn btn-quiet btn-sm">Manage</a>` : ""}
+            </div>
+
+            <ul class="list" style="margin-bottom:24px">
+              ${(s.experience || []).length ? s.experience.map(x => `
+                <li class="row" style="padding:14px 0">
+                  <div>
+                    <strong style="font-size:1.02rem;color:var(--forest)">${esc(x.role)}</strong> · <span style="font-weight:600;color:var(--emerald)">${esc(x.org)}</span>
+                    ${x.period ? `<small style="display:block;color:var(--muted);margin-top:2px">${esc(x.period)}</small>` : ""}
+                    ${x.desc ? `<p style="font-size:.9rem;color:var(--forest);margin-top:6px;line-height:1.5">${esc(x.desc)}</p>` : ""}
+                  </div>
+                </li>
+              `).join("") : `<div class="empty">No experience entries recorded.</div>`}
+            </ul>
+
+            <h3 style="font-size:1.1rem;font-weight:700;color:var(--forest);margin-bottom:12px">Certifications & Honors</h3>
+            <ul class="list">
+              ${(s.certs || []).length ? s.certs.map(c => `
+                <li class="row" style="padding:10px 0">
+                  <div>
+                    <strong>${esc(c.name)}</strong>
+                    <small style="display:block;color:var(--muted)">${esc(c.issuer)} · ${esc(c.year)}</small>
+                  </div>
+                </li>
+              `).join("") : `<div class="empty">No certifications listed.</div>`}
+            </ul>
+          </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- SECTION F: What I Am Looking For -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Looking For</h2>
+            </div>
+            <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Opportunities and collaborators this student is actively seeking:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${(s.lookingFor || []).length ? s.lookingFor.map(lf => {
+                const opt = LOOKING_FOR_OPTIONS.find(o => o.id === lf);
+                return `<span class="looking-tag">${opt ? `${opt.icon} ${opt.label}` : esc(lf)}</span>`;
+              }).join("") : `<span class="looking-tag">👥 Open to student collaborations</span>`}
+            </div>
+          </div>
+
+          <!-- SECTION G: Collaboration Availability -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Collaboration Terms</h2>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:.9rem">
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Availability Mode</strong>
+                <div style="font-weight:700;color:var(--forest);margin-top:2px">${av.label}</div>
+              </div>
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Delivery Model</strong>
+                <div style="font-weight:600;color:var(--forest);margin-top:2px">Remote & Campus Hybrid</div>
+              </div>
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Communication Channel</strong>
+                <div style="font-weight:600;color:var(--forest);margin-top:2px">TeamBud In-App Workspace & Direct Verification</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION H: Contact & Collaboration -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Connect & Socials</h2>
+            </div>
+            <div style="background:var(--ivory);padding:14px;border-radius:12px;border:1px solid var(--line);font-size:.84rem;color:var(--forest);line-height:1.5;margin-bottom:16px">
+              <strong>🔒 Protected Contact Notice:</strong>
+              To protect student privacy and prevent unverified solicitations, direct telephone numbers and private email addresses are shielded. Connect through TeamBud to begin collaborating securely.
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+              ${isOwner 
+                ? `<a class="btn btn-primary" href="#/app/profile">Update My Contact Info</a>` 
+                : (u ? connBtn(u, s) : `<button class="btn btn-primary" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect With Student</button>`)}
+            </div>
+
+            <strong style="display:block;font-size:.82rem;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Verified Public Links</strong>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${(s.socialLinks && s.socialLinks.github) ? `<a href="${esc(s.socialLinks.github)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🌐 GitHub ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.behance) ? `<a href="${esc(s.socialLinks.behance)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🎨 Behance ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.linkedin) ? `<a href="${esc(s.socialLinks.linkedin)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">💼 LinkedIn ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.twitter) ? `<a href="${esc(s.socialLinks.twitter)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🐦 X / Twitter ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.website) ? `<a href="${esc(s.socialLinks.website)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🔗 Website ↗</a>` : ""}
+              ${(!s.socialLinks || Object.keys(s.socialLinks).length === 0) ? `<div style="font-size:.84rem;color:var(--muted)">Connect to view shared external links.</div>` : ""}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -2203,54 +3628,351 @@ function pageSkills(u) {
   `;
 }
 
+function pagePortfolio(u) {
+  const items = u.portfolio || [];
+  return `
+    <div class="page-h">
+      <div>
+        <h1>My Portfolio</h1>
+        <p>Showcase verified work, case studies, and live projects to student agencies and commercial clients.</p>
+      </div>
+      <div class="acts">
+        <button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Project Showcase</button>
+        <a class="btn btn-ghost btn-sm" href="#/talent/${esc(u.username)}" target="_blank">View Public Profile ↗</a>
+      </div>
+    </div>
+
+    ${items.length ? `
+      <div class="talent-portfolio-grid">
+        ${items.map(p => `
+          <div class="talent-portfolio-item">
+            <div class="portfolio-img-box">
+              ${p.image ? `<img src="${safeImg(p.image)}" alt="${esc(p.title || p.label)}">` : `
+                <div style="text-align:center;padding:24px">
+                  <div style="font-size:2.5rem;margin-bottom:6px">📁</div>
+                  <strong style="color:var(--forest)">${esc(p.title || p.label || "Project")}</strong>
+                </div>
+              `}
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;flex:1;justify-content:space-between">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span class="badge role" style="font-size:.74rem">${esc(p.category || "Project")}</span>
+                  ${p.date ? `<small style="color:var(--muted)">${esc(p.date)}</small>` : ""}
+                </div>
+                <h3 style="font-size:1.2rem;font-weight:800;color:var(--forest);margin:0 0 8px">${esc(p.title || p.label)}</h3>
+                <p style="font-size:.9rem;color:var(--forest);line-height:1.5;margin-bottom:12px">${esc(p.description || "Portfolio work showcase.")}</p>
+
+                ${(p.tools || []).length ? `
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                    ${p.tools.map(t => `<span style="font-size:.75rem;background:var(--sage);color:var(--forest);padding:2px 8px;border-radius:4px;font-weight:600">${esc(t)}</span>`).join("")}
+                  </div>
+                ` : ""}
+
+                ${p.contribution ? `
+                  <div style="font-size:.84rem;color:var(--muted);background:var(--ivory);padding:8px 12px;border-radius:8px;margin-bottom:12px">
+                    <strong>Role / Contribution:</strong> ${esc(p.contribution)}
+                  </div>
+                ` : ""}
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+                ${p.url ? `<a class="btn btn-ghost btn-sm" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">Live Link ↗</a>` : ""}
+                ${p.repoUrl ? `<a class="btn btn-ghost btn-sm" href="${esc(p.repoUrl)}" target="_blank" rel="noopener noreferrer">Code ↗</a>` : ""}
+                <button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}">Delete</button>
+              </div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    ` : `
+      <div class="card" style="text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:12px">📁</div>
+        <h2>Showcase Your Abilities</h2>
+        <p style="max-width:540px;margin:8px auto 20px;color:var(--muted);line-height:1.6">
+          Uploading work samples or linking existing projects helps agency founders discover your talents and invite you to high-value client engagements.
+        </p>
+        <button class="btn btn-primary" data-act="modal-add-proj">+ Upload First Project</button>
+      </div>
+    `}
+  `;
+}
+
+let activeConnTab = "accepted";
+
 function pageConnections(u) {
-  const myConns = db.conns.filter(c => (c.from === u.id || c.to === u.id) && c.status === "accepted");
-  const pendingOutgoing = db.conns.filter(c => c.from === u.id && c.status === "pending");
+  const myConns = (db.conns || []).filter(c => (c.from === u.id || c.to === u.id) && c.status === "accepted");
+  const pendingIncoming = incoming(u);
+  const pendingOutgoing = (db.conns || []).filter(c => c.from === u.id && c.status === "pending");
+  const blockedList = (u.blockedUsers || []).map(id => userById(id)).filter(Boolean);
+
   return `
     <div class="page-h">
       <div>
         <h1>Connections</h1>
-        <p>Your network of trusted student collaborators.</p>
+        <p>Your network of trusted student collaborators across tertiary institutions.</p>
       </div>
-      <a class="btn btn-primary btn-sm" href="#/app/discover">Find People</a>
+      <a class="btn btn-primary btn-sm" href="#/app/talent">Discover Students</a>
     </div>
-    <div class="card" style="margin-bottom:20px">
-      <h2>Connected students (${myConns.length})</h2>
-      <ul class="list" style="margin-top:12px">
-        ${myConns.length ? myConns.map(c => {
-          const otherId = c.from === u.id ? c.to : c.from;
-          const o = userById(otherId);
-          if (!o) return "";
-          return `
-            <li class="row">
-              <div class="who">${avatar(o)}
-                <div><strong>${esc(o.name)}</strong><small>${esc(o.department)}, ${esc(o.institution)}</small></div>
-              </div>
-              <span class="acts">
-                <span class="tag lime">Connected</span>
-              </span>
-            </li>`;
-        }).join("") : `<div class="empty">No connections yet. Connect with students to form agency teams.</div>`}
-      </ul>
+
+    <!-- Connection Tabs Strip -->
+    <div class="tab-strip">
+      <button class="tab-btn ${activeConnTab === "accepted" ? "active" : ""}" data-act="set-conn-tab" data-tab="accepted">
+        Connected Students (${myConns.length})
+      </button>
+      <button class="tab-btn ${activeConnTab === "received" ? "active" : ""}" data-act="set-conn-tab" data-tab="received">
+        Received Requests (${pendingIncoming.length})
+      </button>
+      <button class="tab-btn ${activeConnTab === "sent" ? "active" : ""}" data-act="set-conn-tab" data-tab="sent">
+        Sent Requests (${pendingOutgoing.length})
+      </button>
+      ${blockedList.length ? `
+        <button class="tab-btn ${activeConnTab === "blocked" ? "active" : ""}" data-act="set-conn-tab" data-tab="blocked">
+          Blocked (${blockedList.length})
+        </button>
+      ` : ""}
     </div>
-    ${pendingOutgoing.length ? `
+
+    <!-- TAB 1: Connected Students -->
+    ${activeConnTab === "accepted" ? `
       <div class="card">
-        <h2>Sent connection requests (${pendingOutgoing.length})</h2>
-        <ul class="list" style="margin-top:12px">
-          ${pendingOutgoing.map(c => {
-            const o = userById(c.to);
+        <h2>Accepted Connections (${myConns.length})</h2>
+        <p class="c-sub">Students you can directly message and form agency teams with.</p>
+        <ul class="list" style="margin-top:14px">
+          ${myConns.length ? myConns.map(c => {
+            const otherId = c.from === u.id ? c.to : c.from;
+            const o = userById(otherId);
             if (!o) return "";
             return `
-              <li class="row">
-                <div class="who">${avatar(o)}
-                  <div><strong>${esc(o.name)}</strong><small>${esc(o.department)}</small></div>
+              <li class="row" style="padding:16px 0;align-items:flex-start">
+                <div class="who">
+                  ${avatar(o)}
+                  <div>
+                    <strong>${esc(o.name)}</strong>
+                    <div style="font-size:.84rem;color:var(--emerald);font-weight:600">${esc(o.headline || (o.department + " Student"))}</div>
+                    <small style="color:var(--muted)">${esc(o.department)}, ${esc(o.institution)}</small>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
+                      ${(o.skills || []).slice(0, 3).map(s => `<span class="talent-skill-tag">${esc(s.name)}</span>`).join("")}
+                    </div>
+                  </div>
                 </div>
-                <button class="btn btn-quiet btn-sm" data-act="cancel" data-id="${c.id}">Cancel</button>
+                <span class="acts" style="flex-wrap:wrap;gap:8px">
+                  <button class="btn btn-primary btn-sm" data-act="go-msg" data-uid="${o.id}">Message</button>
+                  <a class="btn btn-ghost btn-sm" href="#/talent/${esc(o.username)}" target="_blank">Profile ↗</a>
+                  <button class="btn btn-quiet btn-sm" data-act="rm-conn" data-id="${c.id}" title="Remove connection">Remove</button>
+                </span>
               </li>`;
-          }).join("")}
+          }).join("") : `<div class="empty">No connections yet. Connect with students on <a href="#/app/talent">Talent Hub</a> to form agency teams.</div>`}
         </ul>
       </div>
     ` : ""}
+
+    <!-- TAB 2: Received Requests -->
+    ${activeConnTab === "received" ? `
+      <div class="card">
+        <h2>Received Connection Requests (${pendingIncoming.length})</h2>
+        <p class="c-sub">Students who want to connect with you. Review their introduction note before responding.</p>
+        <ul class="list" style="margin-top:14px">
+          ${pendingIncoming.length ? pendingIncoming.map(c => {
+            const o = userById(c.from);
+            if (!o) return "";
+            return `
+              <li class="row" style="padding:18px;background:var(--ivory);border-radius:12px;margin-bottom:12px;align-items:flex-start">
+                <div class="who" style="flex:1">
+                  ${avatar(o)}
+                  <div style="min-width:0;flex:1">
+                    <strong>${esc(o.name)}</strong>
+                    <small style="display:block;color:var(--muted)">${esc(o.department)}, ${esc(o.institution)}</small>
+                    ${c.note ? `
+                      <div style="font-size:.88rem;color:var(--forest);background:var(--white);padding:10px 14px;border-radius:10px;margin-top:8px;border:1px solid var(--line);line-height:1.5">
+                        "${esc(c.note)}"
+                      </div>
+                    ` : ""}
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+                      ${(o.skills || []).slice(0, 3).map(s => `<span class="talent-skill-tag">${esc(s.name)}</span>`).join("")}
+                    </div>
+                  </div>
+                </div>
+                <span class="acts" style="flex-direction:column;gap:6px">
+                  <button class="btn btn-primary btn-sm" data-act="accept" data-id="${c.id}">Accept</button>
+                  <button class="btn btn-quiet btn-sm" data-act="decline" data-id="${c.id}">Decline</button>
+                  <button class="btn btn-quiet btn-sm" data-act="open-report-modal" data-target-id="${o.id}" data-target-name="${esc(o.name)}" style="color:var(--muted);font-size:.76rem">Block & Report</button>
+                </span>
+              </li>`;
+          }).join("") : `<div class="empty">No pending connection requests received.</div>`}
+        </ul>
+      </div>
+    ` : ""}
+
+    <!-- TAB 3: Sent Requests -->
+    ${activeConnTab === "sent" ? `
+      <div class="card">
+        <h2>Sent Requests (${pendingOutgoing.length})</h2>
+        <p class="c-sub">Invitations you have sent to other students awaiting acceptance.</p>
+        <ul class="list" style="margin-top:14px">
+          ${pendingOutgoing.length ? pendingOutgoing.map(c => {
+            const o = userById(c.to);
+            if (!o) return "";
+            return `
+              <li class="row" style="padding:14px 0">
+                <div class="who">
+                  ${avatar(o)}
+                  <div>
+                    <strong>${esc(o.name)}</strong>
+                    <small>${esc(o.department)}, ${esc(o.institution)}</small>
+                    ${c.note ? `<div style="font-size:.8rem;color:var(--muted);margin-top:4px">Your note: "${esc(c.note)}"</div>` : ""}
+                  </div>
+                </div>
+                <button class="btn btn-quiet btn-sm" data-act="cancel" data-id="${c.id}">Cancel Request</button>
+              </li>`;
+          }).join("") : `<div class="empty">No outgoing connection requests.</div>`}
+        </ul>
+      </div>
+    ` : ""}
+
+    <!-- TAB 4: Blocked Students -->
+    ${activeConnTab === "blocked" ? `
+      <div class="card">
+        <h2>Blocked Students (${blockedList.length})</h2>
+        <p class="c-sub">Students you have blocked from messaging you or viewing your profile.</p>
+        <ul class="list" style="margin-top:14px">
+          ${blockedList.map(b => `
+            <li class="row" style="padding:12px 0">
+              <div class="who">
+                ${avatar(b)}
+                <div>
+                  <strong>${esc(b.name)}</strong>
+                  <small>@${esc(b.username)}</small>
+                </div>
+              </div>
+              <button class="btn btn-quiet btn-sm" data-act="unblock-user" data-uid="${b.id}">Unblock</button>
+            </li>
+          `).join("")}
+        </ul>
+      </div>
+    ` : ""}
+  `;
+}
+
+let activeChatUserId = null;
+
+function pageMessages(u) {
+  // Collect all contacts: accepted connections and teammates from user's agencies
+  const connUserIds = (db.conns || [])
+    .filter(c => c.status === "accepted" && (c.from === u.id || c.to === u.id))
+    .map(c => c.from === u.id ? c.to : c.from);
+
+  const agencyTeammateIds = userAgencies(u.id)
+    .flatMap(a => (a.members || []).map(m => m.userId))
+    .filter(id => id !== u.id);
+
+  const allContactIds = [...new Set([...connUserIds, ...agencyTeammateIds])];
+  const contacts = allContactIds.map(id => userById(id)).filter(Boolean);
+
+  if (!activeChatUserId && contacts.length > 0) {
+    activeChatUserId = contacts[0].id;
+  }
+
+  const activeContact = activeChatUserId ? userById(activeChatUserId) : null;
+  const conversation = (db.messages || []).filter(m =>
+    activeChatUserId && (
+      (m.from === u.id && m.to === activeChatUserId) ||
+      (m.from === activeChatUserId && m.to === u.id)
+    )
+  );
+
+  return `
+    <div class="page-h">
+      <div>
+        <h1>Messages</h1>
+        <p>Direct communication with accepted student connections and agency teammates.</p>
+      </div>
+    </div>
+
+    ${contacts.length === 0 ? `
+      <div class="card" style="text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:12px">💬</div>
+        <h2>No Active Conversations</h2>
+        <p style="max-width:520px;margin:8px auto 20px;color:var(--muted);line-height:1.6">
+          Connect with fellow students on Discover Talent or join an agency team to start messaging collaborators.
+        </p>
+        <a class="btn btn-primary" href="#/app/talent">Discover Students</a>
+      </div>
+    ` : `
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;min-height:560px;background:var(--white);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+        <!-- Contacts list -->
+        <div style="border-right:1px solid var(--line);background:var(--ivory);display:flex;flex-direction:column">
+          <div style="padding:16px;border-bottom:1px solid var(--line)">
+            <strong style="font-size:.95rem;color:var(--forest)">Conversations (${contacts.length})</strong>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:8px">
+            ${contacts.map(c => {
+              const lastMsg = (db.messages || [])
+                .filter(m => (m.from === u.id && m.to === c.id) || (m.from === c.id && m.to === u.id))
+                .slice(-1)[0];
+              const unread = (db.messages || []).some(m => m.from === c.id && m.to === u.id && !m.read);
+              const isActive = activeChatUserId === c.id;
+
+              return `
+                <div class="chat-contact-item" data-act="switch-chat" data-uid="${c.id}" style="padding:12px;border-radius:10px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;background:${isActive ? "var(--sage)" : "transparent"};border:${isActive ? "1px solid #BDD4C7" : "1px solid transparent"}">
+                  ${avatar(c)}
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <strong style="font-size:.88rem;color:var(--forest);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</strong>
+                      ${unread ? `<span style="width:8px;height:8px;border-radius:50%;background:var(--emerald)"></span>` : ""}
+                    </div>
+                    <small style="color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      ${lastMsg ? esc(lastMsg.text) : (c.department || "Student")}
+                    </small>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Active chat pane -->
+        <div style="display:flex;flex-direction:column;height:560px">
+          ${activeContact ? `
+            <div style="padding:14px 20px;border-bottom:1px solid var(--line);background:var(--ivory);display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:12px">
+                ${avatar(activeContact)}
+                <div>
+                  <strong style="display:block;font-size:1rem;color:var(--forest)">${esc(activeContact.name)}</strong>
+                  <small style="color:var(--muted)">${esc(activeContact.department)}, ${esc(activeContact.institution)}</small>
+                </div>
+              </div>
+              <a class="btn btn-quiet btn-sm" href="#/talent/${esc(activeContact.username)}" target="_blank">View Profile ↗</a>
+            </div>
+
+            <div class="chat-stream" id="direct-chat-stream" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+              ${conversation.length ? conversation.map(m => {
+                const isMine = m.from === u.id;
+                return `
+                  <div class="chat-msg ${isMine ? "mine" : ""}" style="display:flex;gap:10px;align-self:${isMine ? "flex-end" : "flex-start"};max-width:75%">
+                    <div class="chat-bubble" style="background:${isMine ? "var(--sage)" : "var(--ivory)"};padding:10px 16px;border-radius:14px;border:1px solid ${isMine ? "#BDD4C7" : "var(--line)"}">
+                      <div style="font-size:.92rem;color:var(--forest);line-height:1.45">${esc(m.text)}</div>
+                      <div style="font-size:.72rem;color:var(--muted);text-align:${isMine ? "right" : "left"};margin-top:4px">${rel(m.t)}</div>
+                    </div>
+                  </div>
+                `;
+              }).join("") : `
+                <div style="text-align:center;color:var(--muted);margin:auto;font-size:.9rem">
+                  Start your conversation with ${esc(activeContact.name)}. Discuss ideas, projects, or agency partnerships!
+                </div>
+              `}
+            </div>
+
+            <form data-form="send-direct-msg" data-to="${activeContact.id}" style="padding:14px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--white)">
+              <input type="text" name="text" placeholder="Type a message to ${esc(firstName(activeContact))}..." class="inp" autocomplete="off" required style="flex:1">
+              <button class="btn btn-primary" type="submit">Send</button>
+            </form>
+          ` : `
+            <div style="margin:auto;text-align:center;color:var(--muted)">Select a conversation to start messaging</div>
+          `}
+        </div>
+      </div>
+    `}
   `;
 }
 
@@ -2320,15 +4042,22 @@ function pageSettings(u) {
 }
 
 function pageProfile(u) {
+  ensureStudentDefaults(u);
   return `
     <div class="page-h">
       <div>
-        <h1>My Profile</h1>
-        <p>Manage your public student presence on TeamBud.</p>
+        <h1>My Talent Profile</h1>
+        <p>Manage your professional student presence and showcase your abilities on TeamBud.</p>
       </div>
+      <span class="acts" style="display:flex;gap:8px">
+        <button type="button" class="btn btn-ghost btn-sm" data-act="share-profile" data-name="${esc(u.name)}" data-url="${window.location.origin}/#/talent/${esc(u.username)}">📋 SHARE MY PROFILE</button>
+        <a class="btn btn-primary btn-sm" href="#/talent/${esc(u.username)}" target="_blank">VIEW MY PUBLIC PROFILE ↗</a>
+      </span>
     </div>
+
+    <!-- Core Profile Details -->
     <div class="card" style="margin-bottom:24px">
-      <h2>Profile Details</h2>
+      <h2>Profile Details & Identity</h2>
       <form data-form="profile" novalidate style="margin-top:16px">
         <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap">
           ${avatar(u, true)}
@@ -2340,33 +4069,158 @@ function pageProfile(u) {
             <small style="display:block;color:var(--muted);margin-top:4px">JPEG, PNG or WebP under 8 MB.</small>
           </div>
         </div>
+
         <div class="grid2">
-          <div class="full">${field("bio", "Biography", `<textarea id="bio" name="bio" maxlength="500" placeholder="Tell students and agencies about your skills, background and what you love creating.">${esc(u.bio || "")}</textarea>`, "Up to 500 characters.")}</div>
+          <div class="full">
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Professional Headline *</label>
+            <input type="text" name="headline" value="${esc(u.headline || "")}" placeholder="e.g. Lead Brand Strategist & React Developer" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.95rem">
+            <small style="color:var(--muted);display:block;margin-top:4px">A concise statement describing what you do and your core specialty.</small>
+          </div>
+
+          <div class="full">
+            ${field("bio", "Short Biography", `<textarea id="bio" name="bio" maxlength="500" placeholder="Tell students and agencies about your skills, background and what you love creating.">${esc(u.bio || "")}</textarea>`, "Up to 500 characters summary displayed in search cards.")}
+          </div>
+
+          <div class="full">
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">About Me (Full Narrative)</label>
+            <textarea name="aboutMe" rows="4" placeholder="Detail who you are, what you are passionate about, current interests, and what you are learning right now." style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.92rem;line-height:1.5">${esc(u.aboutMe || "")}</textarea>
+            <small style="color:var(--muted);display:block;margin-top:4px">Displayed on your detailed profile under About Me.</small>
+          </div>
+
           ${field("institution", "Institution", inp("institution", "text", `value="${esc(u.institution || "")}"`))}
           ${field("department", "Department", inp("department", "text", `value="${esc(u.department || "")}"`))}
-          ${field("level", "Academic level", `<select id="level" name="level">${opts(LEVELS, u.level)}</select>`)}
-          ${field("availability", "Current availability", `<select id="availability" name="availability">${opts(AVAIL, u.availability)}</select>`)}
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Academic Level</label>
+            <select id="level" name="level" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(LEVELS, u.level)}
+            </select>
+            <label style="font-size:.82rem;display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer">
+              <input type="checkbox" name="showLevel" ${u.showLevel !== false ? "checked" : ""}> Display academic level publicly on Talent Hub
+            </label>
+          </div>
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Experience Level</label>
+            <select name="experienceLevel" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(EXPERIENCE_LEVELS, u.experienceLevel)}
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Primary Discipline Category</label>
+            <select name="category" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(CATS, u.category)}
+            </select>
+          </div>
+
+          ${field("availability", "Current Availability", `<select id="availability" name="availability">${opts(AVAIL, u.availability)}</select>`)}
+
+          <!-- Looking For Section -->
+          <div class="full" style="background:var(--ivory);padding:18px;border-radius:14px;border:1px solid var(--line);margin-top:8px">
+            <label class="field-label" style="font-weight:800;display:block;margin-bottom:8px;color:var(--forest)">What are you looking for on TeamBud?</label>
+            <small style="color:var(--muted);display:block;margin-bottom:12px">Select all goals and collaborator types that apply:</small>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+              ${LOOKING_FOR_OPTIONS.map(opt => `
+                <label class="chk" style="font-size:.88rem">
+                  <input type="checkbox" name="lookingFor" value="${esc(opt.id)}" ${(u.lookingFor || []).includes(opt.id) ? "checked" : ""}>
+                  ${opt.icon} ${esc(opt.label)}
+                </label>
+              `).join("")}
+            </div>
+          </div>
+
+          <!-- Social Links -->
+          <div class="full" style="margin-top:8px">
+            <label class="field-label" style="font-weight:800;display:block;margin-bottom:8px;color:var(--forest)">Professional Social & Portfolio Links</label>
+            <small style="color:var(--muted);display:block;margin-bottom:12px">Your direct contact info (phone/email) is protected. Share verified portfolio and professional profiles:</small>
+            <div class="grid2">
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">GitHub Profile</label>
+                <input type="url" name="github" value="${esc((u.socialLinks && u.socialLinks.github) || "")}" placeholder="https://github.com/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Behance / Dribbble</label>
+                <input type="url" name="behance" value="${esc((u.socialLinks && u.socialLinks.behance) || "")}" placeholder="https://behance.net/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">LinkedIn Profile</label>
+                <input type="url" name="linkedin" value="${esc((u.socialLinks && u.socialLinks.linkedin) || "")}" placeholder="https://linkedin.com/in/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Twitter / X Profile</label>
+                <input type="url" name="twitter" value="${esc((u.socialLinks && u.socialLinks.twitter) || "")}" placeholder="https://x.com/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div class="full">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Personal Website / Linktree</label>
+                <input type="url" name="website" value="${esc((u.socialLinks && u.socialLinks.website) || "")}" placeholder="https://..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+            </div>
+          </div>
+
           <div class="full">
-            <label class="field-label" style="font-weight:700;display:block;margin-bottom:8px">Collaboration areas</label>
+            <label class="field-label" style="font-weight:700;display:block;margin-bottom:8px">Collaboration Areas</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
               ${CATS.map(c => `<label class="chk"><input type="checkbox" name="collab" value="${esc(c)}" ${(u.collab || []).includes(c) ? "checked" : ""}> ${esc(c)}</label>`).join("")}
             </div>
           </div>
         </div>
-        <button class="btn btn-primary" type="submit" style="margin-top:18px">Save profile</button>
+
+        <button class="btn btn-primary" type="submit" style="margin-top:20px;padding:12px 24px">Save Talent Profile</button>
       </form>
     </div>
 
-    <!-- Experience & Portfolio -->
+    <!-- Rich Portfolio Showcase Manager -->
     <div class="card" style="margin-bottom:24px">
-      <h2>Experience</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:12px">
+        <div>
+          <h2>Portfolio Showcase Projects</h2>
+          <p class="c-sub" style="margin:2px 0 0">Highlight applications, designs, campaigns, or strategic work to attract clients and agency teammates.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Project</button>
+      </div>
+
+      ${(u.portfolio || []).length ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:14px">
+          ${u.portfolio.map(p => `
+            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border-color:#BDD4C7">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                  <span class="badge role" style="font-size:.7rem">${esc(p.category || "Project")}</span>
+                  <button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}" style="color:var(--danger)">Remove</button>
+                </div>
+                <strong style="font-size:1.05rem;color:var(--forest);display:block;margin-bottom:6px">${esc(p.title || p.label)}</strong>
+                <p style="font-size:.86rem;color:var(--muted);line-height:1.4;margin-bottom:10px">${esc(p.description || "Portfolio work showcase.")}</p>
+                ${(p.tools || []).length ? `
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+                    ${p.tools.map(t => `<span style="font-size:.72rem;background:var(--sage);color:var(--forest);padding:2px 6px;border-radius:4px">${esc(t)}</span>`).join("")}
+                  </div>
+                ` : ""}
+              </div>
+              <div style="border-top:1px solid var(--line);padding-top:10px;margin-top:8px">
+                ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="font-size:.84rem;color:var(--emerald);font-weight:700;text-decoration:none">View Live Project ↗</a>` : `<span style="font-size:.82rem;color:var(--muted)">In-app showcase</span>`}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="empty" style="padding:32px 16px;text-align:center">
+          <p style="margin-bottom:12px">You have not added any showcase projects yet.</p>
+          <button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Your First Showcase Project</button>
+        </div>
+      `}
+    </div>
+
+    <!-- Experience & Certifications -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Work Experience & Leadership</h2>
       <ul class="list" style="margin:14px 0">
         ${(u.experience || []).length ? u.experience.map(x => `
           <li class="row">
             <div>
               <strong>${esc(x.role)}</strong> at <span>${esc(x.org)}</span>
               ${x.period ? `<small> · ${esc(x.period)}</small>` : ""}
-              ${x.desc ? `<p style="font-size:.88rem;color:var(--muted)">${esc(x.desc)}</p>` : ""}
+              ${x.desc ? `<p style="font-size:.88rem;color:var(--muted);margin-top:4px">${esc(x.desc)}</p>` : ""}
             </div>
             <button class="btn btn-quiet btn-sm" data-act="rm-exp" data-id="${x.id}">Remove</button>
           </li>
@@ -2380,28 +4234,6 @@ function pageProfile(u) {
           ${field("desc", "Short summary", inp("desc", "text"))}
         </div>
         <button class="btn btn-ghost btn-sm" type="submit" style="margin-top:12px">Add experience</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h2>Portfolio links</h2>
-      <ul class="list" style="margin:14px 0">
-        ${(u.portfolio || []).length ? u.portfolio.map(l => `
-          <li class="row">
-            <div>
-              <strong>${esc(l.label)}</strong>
-              <small><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a></small>
-            </div>
-            <button class="btn btn-quiet btn-sm" data-act="rm-link" data-id="${l.id}">Remove</button>
-          </li>
-        `).join("") : `<div class="empty">No portfolio links added.</div>`}
-      </ul>
-      <form data-form="add-link" novalidate style="border-top:1px solid var(--line);padding-top:16px;margin-top:16px">
-        <div class="grid2">
-          ${field("label", "Platform label", inp("label", "text", 'placeholder="e.g. Behance, GitHub, Dribbble"'))}
-          ${field("url", "Full URL", inp("url", "url", 'placeholder="https://..."'))}
-        </div>
-        <button class="btn btn-ghost btn-sm" type="submit" style="margin-top:12px">Add link</button>
       </form>
     </div>
   `;
@@ -2715,6 +4547,47 @@ function viewPublicAgency(slug, currentUser) {
                 </div>
               </div>
             ` : ""}
+          </div>
+
+          <!-- Section 9: THE TALENT BEHIND THE TEAM -->
+          <div class="card" style="margin-bottom:28px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h2 style="font-size:1.35rem">THE TALENT BEHIND THE TEAM</h2>
+                <p class="c-sub">Meet the verified student specialists collaborating in this agency.</p>
+              </div>
+              <span class="badge active">${a.members.length} / 10 Active Members</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+              ${a.members.map(m => {
+                const uObj = userById(m.userId);
+                if (!uObj) return "";
+                const topSkills = (uObj.skills || []).slice(0, 4);
+                return `
+                  <div class="member-talent-card" style="border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--ivory);display:flex;flex-direction:column;justify-content:space-between">
+                    <div>
+                      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+                        ${avatar(uObj)}
+                        <div style="min-width:0;flex:1">
+                          <strong style="font-size:1rem;color:var(--forest);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(uObj.name)}</strong>
+                          <span class="badge role" style="font-size:.74rem">${esc(m.role)}</span>
+                        </div>
+                      </div>
+                      ${m.customRoleDesc ? `<p style="font-size:.82rem;color:var(--muted);margin-bottom:8px"><strong>Role:</strong> ${esc(m.customRoleDesc)}</p>` : ""}
+                      <p style="font-size:.86rem;color:var(--forest);line-height:1.45;margin-bottom:10px">${esc(uObj.bio || uObj.headline || (uObj.department + " student at " + uObj.institution))}</p>
+                      ${topSkills.length ? `
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+                          ${topSkills.map(sk => `<span class="talent-skill-tag">${esc(sk.name)}</span>`).join("")}
+                        </div>
+                      ` : ""}
+                    </div>
+                    <div style="padding-top:10px;border-top:1px solid var(--line);margin-top:8px">
+                      <a class="btn btn-ghost btn-sm btn-block" href="#/talent/${esc(uObj.username)}" target="_blank">View Talent Profile ↗</a>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
           </div>
 
           <!-- Services Catalogue -->
@@ -3678,12 +5551,25 @@ function renderAgencyFinance(a, u, isOwnerOrMgr) {
 }
 
 /* ===================== Section 9: Marketplace & Client Portal ===================== */
+function getAgencyTeamSkills(a) {
+  const set = new Set();
+  (a.members || []).forEach(m => {
+    const mem = userById(m.userId);
+    if (mem && mem.skills) {
+      mem.skills.forEach(s => {
+        if (s.name) set.add(s.name);
+      });
+    }
+  });
+  return Array.from(set);
+}
+
 function pageMarketplace(currentUser) {
   const allAgencies = (db.agencies || []).filter(a => a.status === "active");
-  const formingAgencies = (db.agencies || []).filter(a => a.status === "forming" || a.status === "needs_members");
-
   const uniqLocs = [...new Set(allAgencies.map(a => a.location).filter(Boolean))].sort();
   const uniqInds = [...new Set(allAgencies.map(a => a.industry).filter(Boolean))].sort();
+  const uniqInsts = [...new Set(allAgencies.map(a => a.institution).filter(Boolean))].sort();
+  const allTeamSkills = [...new Set(allAgencies.flatMap(a => getAgencyTeamSkills(a)))].sort();
 
   return `
     <div class="page-h">
@@ -3696,19 +5582,38 @@ function pageMarketplace(currentUser) {
       </div>
     </div>
 
-    <!-- Directory Search & Filters -->
+    <!-- Directory Search & Filters (Section 10) -->
     <div class="filters" id="mfilters">
       <div class="field" style="grid-column:1/-1">
         <label for="mq">Search agencies by name, keywords, or service</label>
         <input type="text" id="mq" data-live="market" placeholder="e.g. Design, Software, Mobile app, Branding...">
       </div>
       <div class="field">
-        <label for="mcat">Service category</label>
-        <select id="mcat" data-live="market">${opts(CATS, "", "All categories")}</select>
+        <label for="mcat">Main service</label>
+        <select id="mcat" data-live="market">${opts(CATS, "", "All main services")}</select>
+      </div>
+      <div class="field">
+        <label for="mskill">Team skills (aggregated)</label>
+        <select id="mskill" data-live="market">
+          <option value="">All team skills</option>
+          ${allTeamSkills.map(sk => `<option value="${esc(sk)}">${esc(sk)}</option>`).join("")}
+        </select>
       </div>
       <div class="field">
         <label for="mind">Industry domain</label>
         <select id="mind" data-live="market">${opts(uniqInds, "", "All industries")}</select>
+      </div>
+      <div class="field">
+        <label for="minst">Institution</label>
+        <select id="minst" data-live="market">${opts(uniqInsts, "", "All institutions")}</select>
+      </div>
+      <div class="field">
+        <label for="mavail">Availability</label>
+        <select id="mavail" data-live="market">
+          <option value="">Any availability</option>
+          <option value="open">Available for client work</option>
+          <option value="part">Part-time / Milestones</option>
+        </select>
       </div>
       <div class="field">
         <label for="mloc">Location</label>
@@ -3734,7 +5639,10 @@ function marketResults() {
   if (!container) return;
   const q = ($("#mq") ? $("#mq").value : "").trim().toLowerCase();
   const cat = ($("#mcat") ? $("#mcat").value : "").trim();
+  const skill = ($("#mskill") ? $("#mskill").value : "").trim().toLowerCase();
   const ind = ($("#mind") ? $("#mind").value : "").trim();
+  const inst = ($("#minst") ? $("#minst").value : "").trim();
+  const avail = ($("#mavail") ? $("#mavail").value : "").trim();
   const lo = ($("#mloc") ? $("#mloc").value : "").trim();
   const sz = ($("#msize") ? $("#msize").value : "").trim();
 
@@ -3742,7 +5650,10 @@ function marketResults() {
 
   if (q) list = list.filter(a => a.name.toLowerCase().includes(q) || a.shortDesc.toLowerCase().includes(q) || (a.mainCategory || "").toLowerCase().includes(q));
   if (cat) list = list.filter(a => a.mainCategory === cat || (a.additionalServices || []).includes(cat));
+  if (skill) list = list.filter(a => getAgencyTeamSkills(a).some(s => s.toLowerCase() === skill));
   if (ind) list = list.filter(a => a.industry === ind);
+  if (inst) list = list.filter(a => a.institution === inst);
+  if (avail === "open") list = list.filter(a => a.availability !== "unavailable");
   if (lo) list = list.filter(a => a.location === lo);
   if (sz) {
     const [min, max] = sz.split("-").map(Number);
@@ -3761,44 +5672,58 @@ function marketResults() {
 
   container.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px">
-      ${list.map(a => `
-        <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--emerald)">
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-              ${agencyLogo(a)}
-              <span class="badge active" style="font-size:.74rem">Active · ${a.members.length} Members</span>
-            </div>
-            <h3 style="font-size:1.25rem;margin-bottom:6px">
-              <a href="#/agency/${a.slug}" style="text-decoration:none;color:var(--forest)">${esc(a.name)}</a>
-            </h3>
-            <p style="font-size:.9rem;color:var(--muted);line-height:1.5;margin-bottom:12px">${esc(a.shortDesc)}</p>
-
-            <div style="font-size:.82rem;color:var(--muted);margin-bottom:10px">
-              <div>📍 ${esc(a.location)} · 🎓 ${esc(a.institution)}</div>
-            </div>
-
-            <!-- Published Services preview -->
-            ${(a.services && a.services.length) ? `
-              <div style="background:var(--ivory);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:.84rem">
-                <strong style="display:block;margin-bottom:4px;color:var(--forest)">Services from ${esc(a.services[0].startingPrice)}:</strong>
-                <span class="badge role" style="font-size:.76rem">${esc(a.services[0].title)}</span>
-                ${a.services.length > 1 ? `<small style="color:var(--muted);margin-left:6px">+${a.services.length - 1} more</small>` : ""}
+      ${list.map(a => {
+        const teamSkills = getAgencyTeamSkills(a);
+        return `
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--emerald)">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                ${agencyLogo(a)}
+                <span class="badge active" style="font-size:.74rem">Active · ${a.members.length} Members</span>
               </div>
-            ` : ""}
+              <h3 style="font-size:1.25rem;margin-bottom:6px">
+                <a href="#/agency/${a.slug}" style="text-decoration:none;color:var(--forest)">${esc(a.name)}</a>
+              </h3>
+              <p style="font-size:.9rem;color:var(--muted);line-height:1.5;margin-bottom:12px">${esc(a.shortDesc)}</p>
 
-            <!-- Key specialists tags -->
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-              ${a.members.slice(0, 3).map(m => `<span class="tag" style="font-size:.75rem">${esc(m.role)}</span>`).join("")}
-              ${a.members.length > 3 ? `<span class="tag" style="font-size:.75rem">+${a.members.length - 3}</span>` : ""}
+              <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+                <div>📍 ${esc(a.location)} · 🎓 ${esc(a.institution)}</div>
+              </div>
+
+              <!-- Combined Team Skills Badges (Section 10) -->
+              ${teamSkills.length ? `
+                <div style="margin-bottom:14px;background:var(--ivory);padding:10px 12px;border-radius:10px;border:1px solid var(--line)">
+                  <small style="font-weight:700;color:var(--forest);display:block;margin-bottom:5px">Combined Team Skills:</small>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    ${teamSkills.slice(0, 5).map(sk => `<span class="talent-skill-tag" style="font-size:.75rem">${esc(sk)}</span>`).join("")}
+                    ${teamSkills.length > 5 ? `<span class="tag" style="font-size:.74rem">+${teamSkills.length - 5}</span>` : ""}
+                  </div>
+                </div>
+              ` : ""}
+
+              <!-- Published Services preview -->
+              ${(a.services && a.services.length) ? `
+                <div style="background:var(--ivory);padding:10px 12px;border-radius:10px;margin-bottom:14px;font-size:.84rem">
+                  <strong style="display:block;margin-bottom:4px;color:var(--forest)">Services from ${esc(a.services[0].startingPrice)}:</strong>
+                  <span class="badge role" style="font-size:.76rem">${esc(a.services[0].title)}</span>
+                  ${a.services.length > 1 ? `<small style="color:var(--muted);margin-left:6px">+${a.services.length - 1} more</small>` : ""}
+                </div>
+              ` : ""}
+
+              <!-- Key specialists tags -->
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+                ${a.members.slice(0, 3).map(m => `<span class="tag" style="font-size:.75rem">${esc(m.role)}</span>`).join("")}
+                ${a.members.length > 3 ? `<span class="tag" style="font-size:.75rem">+${a.members.length - 3}</span>` : ""}
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;padding-top:14px;border-top:1px solid var(--line)">
+              <a class="btn btn-ghost btn-sm btn-block" href="#/agency/${a.slug}">View Profile</a>
+              <button class="btn btn-primary btn-sm btn-block" data-act="open-quote-modal" data-agency-id="${a.id}">Request Quote</button>
             </div>
           </div>
-
-          <div style="display:flex;gap:8px;padding-top:14px;border-top:1px solid var(--line)">
-            <a class="btn btn-ghost btn-sm btn-block" href="#/agency/${a.slug}">View Profile</a>
-            <button class="btn btn-primary btn-sm btn-block" data-act="open-quote-modal" data-agency-id="${a.id}">Request Quote</button>
-          </div>
-        </div>
-      `).join("")}
+        `;
+      }).join("")}
     </div>`;
 }
 
@@ -4473,13 +6398,31 @@ function openUploadModal(agencyId, projId) {
 let oppCurrentCategory = "All";
 let oppCurrentVerification = "All";
 let oppSearchQuery = "";
+let oppCurrentAudience = "All";
 
-function pageOpportunities(currentUser, categoryFilter, verificationFilter, searchFilter) {
+function pageOpportunities(currentUser, categoryFilter, verificationFilter, searchFilter, audienceFilter) {
   if (categoryFilter !== undefined) oppCurrentCategory = categoryFilter;
   if (verificationFilter !== undefined) oppCurrentVerification = verificationFilter;
   if (searchFilter !== undefined) oppSearchQuery = searchFilter;
+  if (audienceFilter !== undefined) oppCurrentAudience = audienceFilter;
 
   let opps = (db.opportunities || []).slice();
+
+  // Filter Audience / Eligibility
+  if (oppCurrentAudience === "Individual Students") {
+    opps = opps.filter(o =>
+      /individual|student|developer|designer|internship|fellowship/i.test(o.eligibility || "") ||
+      o.category === "Internship Opportunities" ||
+      o.category === "Training"
+    );
+  } else if (oppCurrentAudience === "Agencies & Teams") {
+    opps = opps.filter(o =>
+      /agency|agencies|team|teams|group|members/i.test(o.eligibility || "")
+    );
+  } else if (oppCurrentAudience === "Saved Opportunities") {
+    const saved = (currentUser && currentUser.savedOpps) || [];
+    opps = opps.filter(o => saved.includes(o.id));
+  }
 
   // Filter Category
   if (oppCurrentCategory && oppCurrentCategory !== "All") {
@@ -4517,13 +6460,15 @@ function pageOpportunities(currentUser, categoryFilter, verificationFilter, sear
     "Training"
   ];
 
+  const savedCount = ((currentUser && currentUser.savedOpps) || []).length;
+
   return `
     <div style="margin-bottom:24px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:12px">
         <div>
           <h1 style="font-size:2rem;margin:0 0 6px">TeamBud Opportunities</h1>
           <p class="c-sub" style="font-size:1.05rem;max-width:760px">
-            Curated student client contracts, innovation grants, hackathons, and mentorship cohorts. Clearly distinguishing official verified opportunities from community submissions.
+            Curated student client contracts, innovation grants, hackathons, and individual internships for students and agency teams across Nigeria.
           </p>
         </div>
         <div>
@@ -4540,11 +6485,24 @@ function pageOpportunities(currentUser, categoryFilter, verificationFilter, sear
           <div style="display:flex;gap:8px;align-items:center">
             <span style="font-size:.86rem;font-weight:700;color:var(--forest)">Verification:</span>
             <select id="opp-verify-filter" class="inp" style="width:auto;padding:6px 12px">
-              <option value="All" ${oppCurrentVerification === "All" ? "selected" : ""}>All Opportunities (${(db.opportunities || []).length})</option>
+              <option value="All" ${oppCurrentVerification === "All" ? "selected" : ""}>All Verification Status</option>
               <option value="verified" ${oppCurrentVerification === "verified" ? "selected" : ""}>Verified by TeamBud Only</option>
-              <option value="community" ${oppCurrentVerification === "community" ? "selected" : ""}>Third-Party / Community Submitted</option>
+              <option value="community" ${oppCurrentVerification === "community" ? "selected" : ""}>Third-Party / Community</option>
             </select>
           </div>
+        </div>
+
+        <!-- Eligibility Filter Strip (Section 11) -->
+        <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);flex-wrap:wrap">
+          <span style="font-size:.86rem;font-weight:700;color:var(--forest)">Eligibility:</span>
+          ${[
+            ["All", "All Opportunities"],
+            ["Individual Students", "Individual Students"],
+            ["Agencies & Teams", "Agencies & Teams"],
+            ["Saved Opportunities", `★ Saved Opportunities (${savedCount})`]
+          ].map(([val, label]) => `
+            <button class="opp-chip ${oppCurrentAudience === val ? "active" : ""}" data-opp-aud="${esc(val)}">${esc(label)}</button>
+          `).join("")}
         </div>
 
         <!-- Category Filter Chips -->
@@ -4560,6 +6518,9 @@ function pageOpportunities(currentUser, categoryFilter, verificationFilter, sear
         <div class="opp-grid">
           ${opps.map(o => {
             const isVerified = o.verificationStatus === "verified";
+            const isSaved = ((currentUser && currentUser.savedOpps) || []).includes(o.id);
+            const isIndividual = /individual|student|developer|designer|internship/i.test(o.eligibility || "") || o.category === "Internship Opportunities";
+
             return `
               <div class="opp-card">
                 <div>
@@ -4573,14 +6534,17 @@ function pageOpportunities(currentUser, categoryFilter, verificationFilter, sear
                         <small style="color:var(--muted)">${esc(o.location || "Nigeria")}</small>
                       </div>
                     </div>
-                    <div>
+                    <div style="display:flex;gap:6px;align-items:center">
+                      <button class="btn btn-quiet btn-sm" data-act="save-opp" data-opp-id="${o.id}" title="${isSaved ? "Remove bookmark" : "Save opportunity"}" style="padding:4px 8px;font-size:.85rem;color:${isSaved ? "var(--emerald)" : "var(--muted)"}">
+                        ${isSaved ? "★ Saved" : "☆ Save"}
+                      </button>
                       ${isVerified ? `
                         <span class="badge verified" title="Independently verified and vetted by TeamBud Administrators">
                           🛡️ Verified
                         </span>
                       ` : `
-                        <span class="badge community" title="Submitted by third-party community partner. Verify independently before engagement.">
-                          Third-Party
+                        <span class="badge community" title="Community submitted opportunity">
+                          Community
                         </span>
                       `}
                     </div>
@@ -4590,7 +6554,11 @@ function pageOpportunities(currentUser, categoryFilter, verificationFilter, sear
                     ${esc(o.title)}
                   </h3>
 
+                  <!-- Eligibility & Category Badges (Section 11) -->
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+                    <span class="badge ${isIndividual ? "active" : "role"}">
+                      ${isIndividual ? "Individual Opportunity" : "Agency & Team Opportunity"}
+                    </span>
                     <span class="badge role">${esc(o.category)}</span>
                     ${o.rewardOrValue ? `<span class="badge" style="background:#E0F2F1;color:#00695C;border:1px solid #80CBC4">${esc(o.rewardOrValue)}</span>` : ""}
                   </div>
@@ -5133,6 +7101,37 @@ function route() {
   const parts = raw.split("?")[0].split("/").filter(Boolean);
   const u = me();
 
+  // Talent Hub Public / Authenticated Route: #/talent or #/talent/:username
+  if (parts[0] === "talent") {
+    if (parts[1]) {
+      draw(viewStudentTalentProfile(parts[1], u));
+      return;
+    }
+    if (u && u.role === "student") {
+      draw(shell("talent", pageTalentHub(u)));
+    } else {
+      draw(`
+        ${protoBar()}
+        <div style="max-width:1200px;margin:0 auto;padding:20px 24px 80px">
+          <header class="row" style="margin-bottom:28px">
+            <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
+            <div style="display:flex;gap:14px;align-items:center">
+              <a class="link" href="${SITE_URL}" style="text-decoration:none;font-weight:600;color:var(--forest)">Home</a>
+              <a class="link" href="#/talent" style="text-decoration:none;font-weight:700;color:var(--emerald)">Talent Hub</a>
+              <a class="link" href="#/marketplace" style="text-decoration:none;font-weight:600;color:var(--forest)">Marketplace</a>
+              <a class="link" href="#/opportunities" style="text-decoration:none;font-weight:600;color:var(--forest)">Opportunities</a>
+              ${u ? (u.role === "client" ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>` : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`) : `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`}
+            </div>
+          </header>
+          ${pageTalentHub(u)}
+        </div>
+      `);
+    }
+    document.title = "Talent Hub | TeamBud";
+    talentHubResults();
+    return;
+  }
+
   // Public agency route: #/agency/:slug
   if (parts[0] === "agency" && parts[1]) {
     draw(viewPublicAgency(parts[1], u));
@@ -5285,6 +7284,7 @@ function route() {
       const p = parts[1] || "overview";
       const pages = {
         overview: pageOverview,
+        talent: pageTalentHub,
         discover: pageDiscover,
         agency: pageMyAgency,
         marketplace: pageMarketplace,
@@ -5301,6 +7301,7 @@ function route() {
       const navItem = NAV.find(n => n[0] === p);
       document.title = (navItem ? navItem[1] : "Dashboard") + " | TeamBud";
 
+      if (p === "talent") talentHubResults();
       if (p === "discover") discoverResults();
       if (p === "marketplace") marketResults();
       if (p === "opportunities") initOppListeners();
@@ -5417,6 +7418,110 @@ const ACT = {
 
   "close-modal": () => {
     closeModal();
+  },
+
+  "filter-talent-cat": a => {
+    activeTalentCategory = a.dataset.cat || "all";
+    $$(".talent-cat-btn").forEach(b => b.classList.toggle("active", b.dataset.cat === activeTalentCategory));
+    talentHubResults();
+  },
+
+  "prompt-login": a => {
+    const msg = a.dataset.msg || "Log in as a student to connect.";
+    showModal(`
+      <div style="text-align:center;padding:16px 12px">
+        <div style="font-size:2.6rem;margin-bottom:12px">🤝</div>
+        <h3 style="font-size:1.35rem;font-weight:800;color:var(--forest);margin-bottom:8px">Join TeamBud to Connect</h3>
+        <p style="font-size:.92rem;color:var(--muted);margin-bottom:22px;line-height:1.5">${esc(msg)}</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-primary" href="#/login">Log In</a>
+          <a class="btn btn-ghost" href="#/register">Create Student Account</a>
+        </div>
+      </div>
+    `);
+  },
+
+  "share-profile": a => {
+    const url = a.dataset.url || window.location.href;
+    const name = a.dataset.name || "Student";
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast(`Copied ${name}'s profile link!`);
+      }).catch(() => {
+        prompt("Copy this profile link:", url);
+      });
+    } else {
+      prompt("Copy this profile link:", url);
+    }
+  },
+
+  "modal-add-proj": () => {
+    showModal(`
+      <h3 style="font-size:1.35rem;font-weight:800;color:var(--forest);margin-bottom:8px">Add Showcase Project</h3>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:18px">Demonstrate your hands-on ability with real code, design, campaigns, or strategic work.</p>
+      <form data-form="add-portfolio-proj" novalidate>
+        <div class="grid2">
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Project Title *</label>
+            <input type="text" name="title" required placeholder="e.g. UniTrade Campus Commerce App" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Discipline Category</label>
+            <select name="category" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="Full-Stack Web App">Full-Stack Web App</option>
+              <option value="Mobile Application">Mobile Application</option>
+              <option value="Brand Identity & Design">Brand Identity & Design</option>
+              <option value="Digital Marketing Campaign">Digital Marketing Campaign</option>
+              <option value="UI & UX Case Study">UI & UX Case Study</option>
+              <option value="Copywriting & Content">Copywriting & Content</option>
+              <option value="Agribusiness & Operations">Agribusiness & Operations</option>
+              <option value="Business Strategy & Research">Business Strategy & Research</option>
+              <option value="Other Project">Other Project</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Completion Date / Year</label>
+            <input type="text" name="date" placeholder="e.g. November 2024" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Project Summary & Impact *</label>
+            <textarea name="description" required rows="3" placeholder="Describe what you built, problem solved, and key features or outcomes." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px"></textarea>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Tools & Technologies (comma-separated)</label>
+            <input type="text" name="tools" placeholder="e.g. React, Tailwind, Figma, Node.js" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Live Demo / Showcase URL</label>
+            <input type="url" name="url" placeholder="https://..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Your Specific Role / Contribution</label>
+            <input type="text" name="contribution" placeholder="e.g. Lead Frontend Engineer - built responsive UI & cart state" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Preview Image URL (Optional)</label>
+            <input type="url" name="image" placeholder="https://images.unsplash.com/... or hosted image link" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+          <button type="button" class="btn btn-quiet" data-act="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Project to Showcase</button>
+        </div>
+      </form>
+    `);
+  },
+
+  "rm-portfolio-proj": a => {
+    const id = a.dataset.id;
+    const u = me();
+    if (!u) return;
+    if (confirm("Remove this project from your showcase?")) {
+      u.portfolio = (u.portfolio || []).filter(p => p.id !== id);
+      save();
+      toast("Project removed");
+      rerender();
+    }
   },
 
   "open-quote-modal": a => {
@@ -5654,6 +7759,7 @@ document.addEventListener("input", e => {
   }
   if (t.dataset && t.dataset.live === "disc") discoverResults();
   if (t.dataset && t.dataset.live === "market") marketResults();
+  if (t.dataset && t.dataset.live === "talent") talentHubResults();
 });
 
 document.addEventListener("change", e => {
@@ -5662,6 +7768,7 @@ document.addEventListener("change", e => {
 
   if (L === "disc") discoverResults();
   if (L === "market") marketResults();
+  if (L === "talent") talentHubResults();
   if (L === "country") {
     const sw = $("#state-wrap");
     if (sw) sw.innerHTML = stateField(t.value);
@@ -6056,15 +8163,51 @@ document.addEventListener("submit", async e => {
   if (!u) return route();
 
   if (kind === "profile") {
+    u.headline = (v.headline || "").trim() || u.headline;
     u.bio = (v.bio || "").trim().slice(0, 500);
+    u.aboutMe = (v.aboutMe || "").trim() || u.aboutMe;
     u.institution = (v.institution || "").trim() || u.institution;
     u.department = (v.department || "").trim() || u.department;
     u.level = v.level || u.level;
+    u.showLevel = f.elements.showLevel ? f.elements.showLevel.checked : true;
+    u.experienceLevel = v.experienceLevel || u.experienceLevel;
+    u.category = v.category || u.category;
     u.availability = v.availability || "unset";
     u.collab = $$("input[name=collab]:checked", f).map(i => i.value);
-    log(u, "Updated student profile details");
+    u.lookingFor = $$("input[name=lookingFor]:checked", f).map(i => i.value);
+    u.socialLinks = {
+      github: (v.github || "").trim(),
+      behance: (v.behance || "").trim(),
+      linkedin: (v.linkedin || "").trim(),
+      twitter: (v.twitter || "").trim(),
+      website: (v.website || "").trim()
+    };
+    log(u, "Updated student talent profile details");
     save();
-    toast("Profile saved");
+    toast("Talent profile saved");
+    return rerender();
+  }
+
+  if (kind === "add-portfolio-proj") {
+    need("title", "Enter a project title.");
+    need("description", "Enter a project description.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    u.portfolio = u.portfolio || [];
+    const tools = (v.tools || "").split(",").map(t => t.trim()).filter(Boolean);
+    u.portfolio.unshift({
+      id: rid(),
+      title: v.title.trim(),
+      category: v.category || "Project",
+      date: (v.date || "").trim() || "2024",
+      description: v.description.trim(),
+      tools,
+      url: (v.url || "").trim(),
+      contribution: (v.contribution || "").trim(),
+      image: (v.image || "").trim()
+    });
+    save();
+    closeModal();
+    toast("Project added to your portfolio showcase!");
     return rerender();
   }
 

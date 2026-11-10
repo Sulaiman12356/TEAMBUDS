@@ -36,6 +36,8 @@
   "rewrites": [
     { "source": "/teambud-home", "destination": "/teambud-home.html" },
     { "source": "/teambud-app", "destination": "/teambud-app.html" },
+    { "source": "/talent/:path*", "destination": "/teambud-app.html" },
+    { "source": "/talent", "destination": "/teambud-app.html" },
     { "source": "/agency/:path*", "destination": "/teambud-app.html" },
     { "source": "/agency-hub/:path*", "destination": "/teambud-app.html" },
     { "source": "/join-agency/:path*", "destination": "/teambud-app.html" },

@@ -320,6 +320,57 @@ h1,h2,h3,h4{font-family:var(--head);line-height:1.15;letter-spacing:-.01em}
 
 .paystack-modal{border:2px solid #09A5DB;border-radius:16px;background:var(--white);padding:28px}
 .paystack-banner{background:linear-gradient(135deg,#011B33 0%,#09A5DB 100%);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+
+/* ===================== Talent Hub & Student Showcase ===================== */
+.talent-hero{background:linear-gradient(145deg, #0F5540 0%, #176B50 70%, #1f7d5f 100%);color:#fff;border-radius:22px;padding:48px 36px;margin-bottom:32px;position:relative;overflow:hidden;box-shadow:0 16px 36px rgba(15,85,64,0.18)}
+.talent-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(197,232,108,0.18) 0%, transparent 70%);pointer-events:none}
+.talent-hero h1{color:#fff;font-size:2.4rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px;max-width:700px}
+.talent-hero p{color:#E5EDE2;font-size:1.08rem;line-height:1.6;max-width:680px;margin-bottom:24px}
+.talent-hero-acts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.talent-hero .btn-lime{background:var(--lime);color:var(--forest);font-weight:700;border:none;padding:12px 22px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-family:var(--head);transition:all .15s}
+.talent-hero .btn-lime:hover{background:#b5de54;transform:translateY(-1px)}
+.talent-hero .btn-ghost-light{border:1px solid rgba(229,237,226,0.5);color:#fff;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s}
+.talent-hero .btn-ghost-light:hover{background:rgba(255,255,255,0.12)}
+
+.talent-cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:20px;scrollbar-width:thin}
+.talent-cat-btn{padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--white);font-size:.85rem;font-weight:600;color:var(--forest);cursor:pointer;white-space:nowrap;transition:all .15s}
+.talent-cat-btn:hover{border-color:var(--emerald);background:var(--ivory)}
+.talent-cat-btn.active{background:var(--emerald);color:#fff;border-color:var(--emerald);box-shadow:0 2px 8px rgba(23,107,80,0.2)}
+
+.talent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-top:20px}
+.talent-card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(24,68,55,0.03);transition:transform .18s,box-shadow .18s,border-color .18s;position:relative}
+.talent-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(24,68,55,0.08);border-color:#BDD4C7}
+.talent-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px}
+.talent-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--lime);background:var(--sage);flex-shrink:0}
+.talent-meta-unboxed{font-size:.84rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.talent-headline{font-size:.95rem;font-weight:700;color:var(--forest);margin:8px 0 10px;line-height:1.4}
+.talent-skills{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.talent-skill-tag{font-size:.76rem;background:var(--sage);color:var(--forest);padding:3px 9px;border-radius:6px;font-weight:600}
+.talent-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+.talent-prof-header{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:36px;margin-bottom:28px;box-shadow:0 4px 16px rgba(24,68,55,0.04);position:relative}
+.talent-prof-top{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.talent-prof-avatar{width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--lime);box-shadow:0 6px 18px rgba(23,107,80,0.15);flex-shrink:0}
+.talent-prof-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+
+.talent-sec{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:28px;margin-bottom:24px}
+.talent-sec-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.talent-sec-h h2{font-size:1.35rem;font-weight:800;color:var(--forest);margin:0}
+
+.talent-skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.talent-skill-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--ivory);transition:border-color .15s}
+.talent-skill-card:hover{border-color:var(--emerald)}
+.skill-bar-wrap{height:6px;background:rgba(23,107,80,0.12);border-radius:999px;margin:8px 0;overflow:hidden}
+.skill-bar-fill{height:100%;border-radius:999px;background:var(--emerald)}
+
+.talent-portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+.talent-portfolio-item{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--white);display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,0.02);transition:transform .18s,box-shadow .18s}
+.talent-portfolio-item:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(24,68,55,0.08)}
+.portfolio-img-box{width:100%;height:190px;background:var(--sage);object-fit:cover;display:flex;align-items:center;justify-content:center;position:relative}
+.portfolio-img-box img{width:100%;height:100%;object-fit:cover}
+
+.looking-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;border:1px solid #BDD4C7;background:var(--sage);color:var(--forest);font-size:.86rem;font-weight:600;margin:4px}
+.disclaimer-banner{background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px 18px;color:#92400E;font-size:.88rem;margin:16px 0;display:flex;gap:12px;align-items:flex-start;line-height:1.5}
 </style>
 </head>
 <body>
@@ -358,6 +409,17 @@ const INSTITUTIONS = ["Olabisi Onabanjo University","University of Lagos","Unive
 const INTENTS = [["team","Looking for a team"],["create","Interested in creating an agency"],["join","Looking to join an existing agency"],["opps","Interested in discovering opportunities"]];
 const SKILL_SUGGEST = ["Web development","Mobile app development","UI and UX design","Graphic design","Brand identity","Digital marketing","Social media management","Copywriting","Content writing","Video editing","Photography","Data analysis","Bookkeeping","Business planning","Project management","Public speaking","Event planning","Tutoring"];
 const AVAIL = [["unset","Not set"],["now","Available now"],["part","Available part time"],["later","Available later"],["no","Not available"]];
+const EXPERIENCE_LEVELS = ["Beginner (Under 1 yr)","Intermediate (1-2 yrs)","Advanced (2-4 yrs)","Expert / Lead (4+ yrs)"];
+const LOOKING_FOR_OPTIONS = [
+  { id: "teammates", label: "Teammates for projects", icon: "👥" },
+  { id: "join_agency", label: "Join an existing agency", icon: "🤝" },
+  { id: "create_agency", label: "Co-founders to start an agency", icon: "🚀" },
+  { id: "freelance", label: "Freelance & client gigs", icon: "💼" },
+  { id: "internships", label: "Internships & attachment", icon: "🎓" },
+  { id: "mentorship", label: "Mentorship & guidance", icon: "🧭" },
+  { id: "partnerships", label: "Startup & business partnerships", icon: "💡" },
+  { id: "learning_skills", label: "Learning & skill exchange", icon: "📚" }
+];
 const CLIENT_TYPES = ["Individual","Small business","Company","Non-profit or organisation","Educational institution"];
 
 const TEAM_ROLES = [
@@ -481,7 +543,52 @@ const me = () => {
 };
 
 const userById = id => db.users.find(u => u.id === id);
-const students = () => db.users.filter(u => u.role === "student" && u.verified);
+
+function ensureStudentDefaults(u) {
+  if (!u || u.role !== "student") return u;
+  if (!u.headline) {
+    const pSkill = (u.skills && u.skills[0]) ? u.skills[0].name : "Talented Student";
+    u.headline = `${pSkill} · ${u.department || "Student"}`;
+  }
+  if (u.showLevel === undefined) u.showLevel = true;
+  if (!u.experienceLevel) {
+    const hasAdv = (u.skills || []).some(s => s.level === "Advanced");
+    u.experienceLevel = hasAdv ? "Advanced (2-4 yrs)" : "Intermediate (1-2 yrs)";
+  }
+  if (!u.category) {
+    u.category = (u.collab && u.collab[0]) || "Technology and Software Development";
+  }
+  if (!u.lookingFor || !u.lookingFor.length) {
+    u.lookingFor = ["teammates", "join_agency"];
+  }
+  if (!u.socialLinks) {
+    u.socialLinks = {};
+  }
+  if (!u.aboutMe) {
+    u.aboutMe = u.bio || "";
+  }
+  if (!u.portfolio) {
+    u.portfolio = [];
+  }
+  u.portfolio = u.portfolio.map(p => {
+    if (typeof p === "string") return { id: rid(), title: "Portfolio Project", url: p, description: "", category: "General", tools: [] };
+    if (p && !p.title && p.label) {
+      return {
+        id: p.id || rid(),
+        title: p.label,
+        url: p.url || "",
+        description: p.desc || "Student showcase item.",
+        category: "Portfolio",
+        tools: [],
+        image: p.image || ""
+      };
+    }
+    return p;
+  });
+  return u;
+}
+
+const students = () => db.users.filter(u => u.role === "student" && u.verified).map(ensureStudentDefaults);
 
 function log(u, text) {
   u.activity = u.activity || [];
@@ -579,48 +686,322 @@ function isAgencyMember(agency, userId) {
 window.__SULAIMAN_PHOTO = "data:image/jpeg;base64,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";
 const SULAIMAN_PHOTO = typeof window !== "undefined" && window.__SULAIMAN_PHOTO ? window.__SULAIMAN_PHOTO : "sulaiman.jpg";
 
-const DEMO = [
-  ["Onifade Sulaiman Ipesola", "mr_clarity", "Computer Science", "Lagos", "Founder of TeamBud & Clarity Digital Academy. Computer Science student, young leader, and digital entrepreneur helping students collaborate, build agencies, and earn together.", [["Digital marketing","Advanced"],["Brand strategy","Advanced"],["Team building","Advanced"],["Web development","Intermediate"]], ["Technology and Software Development","Digital Marketing","Business Consulting"], ["fintech","startups","education"], "now", SULAIMAN_PHOTO],
-  ["Adeyemi Okon", "sample_dev", "Computer Science", "Lagos", "Builds modern web applications with React and Node.js. Passionate about software architecture and team building.", [["Web development","Advanced"],["UI and UX design","Intermediate"]], ["Technology and Software Development"], ["fintech","education"], "now"],
-  ["Chioma Eze", "sample_design", "Fine and Applied Arts", "Ogun", "Brand identity and visual design strategist for ambitious digital ventures.", [["Graphic design","Advanced"],["Brand identity","Intermediate"]], ["Graphics and Brand Design","Fashion and Creative Arts"], ["fashion","branding"], "part"],
-  ["Ibrahim Musa", "sample_mkt", "Mass Communication", "Oyo", "Growth marketing, social media campaigns, and client conversion funnels.", [["Digital marketing","Intermediate"],["Social media management","Advanced"]], ["Digital Marketing","Content Creation and Media"], ["branding","education"], "now"],
-  ["Fatima Bello", "sample_write", "English and Literary Studies", "Osun", "Technical and brand copywriting for websites, presentations, and product launch decks.", [["Copywriting","Advanced"],["Content writing","Advanced"]], ["Writing and Communication"], ["writing","culture"], "now"],
-  ["Tunde Bakare", "sample_pm", "Business Administration", "Lagos", "Project manager ensuring delivery milestones, agile sprints, and client satisfaction.", [["Project management","Advanced"],["Business planning","Intermediate"]], ["Business Consulting"], ["startups","operations"], "part"]
+const DEMO_STUDENTS = [
+  {
+    name: "Onifade Sulaiman Ipesola",
+    username: "mr_clarity",
+    dept: "Computer Science",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "300 Level",
+    photo: SULAIMAN_PHOTO,
+    headline: "Founder & Lead Strategist at TeamBud · Computer Science Student · Digital Entrepreneur",
+    bio: "Founder of TeamBud & Clarity Digital Academy. Computer Science student, young leader, and digital entrepreneur helping students collaborate, build agencies, and earn together.",
+    aboutMe: "Passionate about empowering African students through collaborative entrepreneurship. Lead founder of TeamBud and Clarity Digital Academy. I blend computer science fundamentals with digital marketing, team leadership, and product strategy to help student talent build profitable student-run agencies across Nigeria.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Technology and Software Development",
+    avail: "now",
+    skills: [
+      { name: "Digital marketing", level: "Advanced", duration: "3 years", desc: "Performance marketing, funnel architecture, and campus growth blitzes.", pro: true, collab: true },
+      { name: "Brand strategy", level: "Advanced", duration: "3 years", desc: "Identity design systems, value propositions, and agency positioning.", pro: true, collab: true },
+      { name: "Team building", level: "Advanced", duration: "2 years", desc: "Recruiting complementary skill sets and structuring agile project execution.", pro: true, collab: true },
+      { name: "Web development", level: "Intermediate", duration: "2 years", desc: "Modern frontend frameworks, responsive UI, and client portals.", pro: true, collab: true }
+    ],
+    lookingFor: ["teammates", "create_agency", "partnerships", "mentorship"],
+    socialLinks: {
+      github: "https://github.com/Sulaiman12356",
+      linkedin: "https://linkedin.com",
+      twitter: "https://x.com",
+      website: "https://teambud.vercel.app"
+    },
+    portfolio: [
+      {
+        id: "p_teambud",
+        title: "TeamBud Ecosystem Platform",
+        category: "Full-Stack Web App",
+        date: "2024 - 2025",
+        description: "Architected and built the comprehensive TeamBud platform connecting Nigerian university students to form agencies, showcase abilities, and deliver client projects with transparent revenue distribution.",
+        image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80",
+        url: "https://teambud.vercel.app",
+        tools: ["React", "TypeScript", "Node.js", "Tailwind CSS"],
+        contribution: "Founder, Product Architect & Lead Engineer"
+      },
+      {
+        id: "p_clarity",
+        title: "Clarity Digital Academy Portal",
+        category: "EdTech & Learning Hub",
+        date: "2024",
+        description: "Created skill-training and community hub for 500+ undergraduate learners acquiring high-income digital skills and agency execution frameworks.",
+        image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80",
+        url: "https://teambud.vercel.app",
+        tools: ["JavaScript", "HTML5", "CSS3", "Responsive UI"],
+        contribution: "Founder & Lead Instructor"
+      }
+    ],
+    experience: [
+      { id: "e1", role: "Founder & Lead Director", org: "TeamBud & Clarity Academy", period: "2023 - Present", desc: "Spearheaded student agency formation networks and digital entrepreneurial training across campuses." },
+      { id: "e2", role: "Lead Student Ambassador", org: "Campus Innovation Council", period: "2024 - Present", desc: "Organized collaborative student workshops on digital agency business models." }
+    ],
+    certs: [
+      { id: "c1", name: "Executive Leadership & Venture Strategy", issuer: "Enterprise Innovation Hub", year: "2024" }
+    ],
+    collab: ["Technology and Software Development","Digital Marketing","Business Consulting"],
+    interests: ["fintech","startups","education"]
+  },
+  {
+    name: "Adeyemi Okon",
+    username: "sample_dev",
+    dept: "Computer Science",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "300 Level",
+    photo: "",
+    headline: "Full-Stack Engineer & React Specialist · 300 Level CS",
+    bio: "Builds modern web applications with React and Node.js. Passionate about software architecture, state patterns and team building.",
+    aboutMe: "Dedicated software engineer passionate about modern web applications, scalable state architectures, and robust API design. Always excited to collaborate on cross-functional student projects.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Technology and Software Development",
+    avail: "now",
+    skills: [
+      { name: "Web development", level: "Advanced", duration: "3 years", desc: "Full-stack web applications with React, TypeScript and Node.js.", pro: true, collab: true },
+      { name: "UI and UX design", level: "Intermediate", duration: "2 years", desc: "Component design systems and intuitive user journeys.", pro: true, collab: true }
+    ],
+    lookingFor: ["join_agency", "freelance", "teammates"],
+    socialLinks: { github: "https://github.com", linkedin: "https://linkedin.com", website: "https://portfolio-dev.vercel.app" },
+    portfolio: [
+      {
+        id: "p_dev1",
+        title: "Campus Mart E-commerce Engine",
+        category: "Full-Stack Web App",
+        date: "2024",
+        description: "Peer-to-peer campus marketplace allowing verified students to trade textbooks and gadgets safely.",
+        image: "https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&w=800&q=80",
+        url: "https://github.com",
+        tools: ["React", "Node.js", "Express", "PostgreSQL"],
+        contribution: "Backend & Database Lead"
+      }
+    ],
+    experience: [{ id: "ed1", role: "Frontend Lead", org: "Campus Innovation Hub", period: "2024 - Present", desc: "Built modular web components for student client engagements." }],
+    certs: [{ id: "cd1", name: "Certified Full-Stack Developer", issuer: "Developer Circle", year: "2024" }],
+    collab: ["Technology and Software Development"],
+    interests: ["fintech","education"]
+  },
+  {
+    name: "Chioma Eze",
+    username: "sample_design",
+    dept: "Fine and Applied Arts",
+    state: "Ogun",
+    inst: "Olabisi Onabanjo University",
+    level: "400 Level",
+    photo: "",
+    headline: "Brand Identity Designer & Design Systems Lead",
+    bio: "Brand identity and visual design strategist for ambitious digital ventures and youth startups.",
+    aboutMe: "Visual designer crafting distinctive typography, memorable identity systems, and user-centric digital experiences for emerging brands and agency clients.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Graphics and Brand Design",
+    avail: "part",
+    skills: [
+      { name: "Graphic design", level: "Advanced", duration: "3 years", desc: "Logotype creation, style guides, and brand collateral.", pro: true, collab: true },
+      { name: "Brand identity", level: "Intermediate", duration: "2 years", desc: "Brand positioning, color systems, and corporate packaging.", pro: true, collab: true }
+    ],
+    lookingFor: ["join_agency", "freelance", "partnerships"],
+    socialLinks: { behance: "https://behance.net", linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_des1",
+        title: "AfroVibe Fashion Brand Identity",
+        category: "Brand Identity & Design",
+        date: "2024",
+        description: "Complete brand guidelines, custom logotype, packaging assets, and lookbook for a sustainable campus fashion line.",
+        image: "https://images.unsplash.com/photo-1542744094-24638eff58bb?auto=format&fit=crop&w=800&q=80",
+        url: "https://behance.net",
+        tools: ["Figma", "Adobe Illustrator", "Photoshop"],
+        contribution: "Solo Creative Director"
+      }
+    ],
+    experience: [{ id: "edes1", role: "Creative Lead", org: "Apex Design Collective", period: "2023 - 2024", desc: "Directed 8 client visual redesigns across FMCG and apparel." }],
+    certs: [{ id: "cdes1", name: "Visual Identity Masterclass", issuer: "Design Institute", year: "2023" }],
+    collab: ["Graphics and Brand Design","Fashion and Creative Arts"],
+    interests: ["fashion","branding"]
+  },
+  {
+    name: "Ibrahim Musa",
+    username: "sample_mkt",
+    dept: "Mass Communication",
+    state: "Oyo",
+    inst: "University of Ibadan",
+    level: "300 Level",
+    photo: "",
+    headline: "Growth Marketer & Paid Performance Specialist",
+    bio: "Growth marketing, social media campaigns, and client conversion funnels for student-run businesses.",
+    aboutMe: "Data-driven marketing strategist building customer acquisition funnels, viral social campaigns, and high-converting launch strategies for university ventures.",
+    showLevel: true,
+    expLevel: "Intermediate (1-2 yrs)",
+    cat: "Digital Marketing",
+    avail: "now",
+    skills: [
+      { name: "Digital marketing", level: "Intermediate", duration: "2 years", desc: "Paid social funnels, content distribution, and analytics tracking.", pro: true, collab: true },
+      { name: "Social media management", level: "Advanced", duration: "3 years", desc: "Community engagement, viral short-form video, and retention strategy.", pro: true, collab: true }
+    ],
+    lookingFor: ["teammates", "freelance", "join_agency"],
+    socialLinks: { twitter: "https://x.com", linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_mkt1",
+        title: "UniChow Campus Delivery Launch",
+        category: "Digital Marketing Campaign",
+        date: "2024",
+        description: "Managed 30-day viral TikTok and WhatsApp marketing blitz generating 3,400 orders in first month across 2 campuses.",
+        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
+        url: "https://x.com",
+        tools: ["Meta Ads", "Google Analytics", "Canva"],
+        contribution: "Campaign Strategist"
+      }
+    ],
+    experience: [{ id: "emkt1", role: "Growth Consultant", org: "Campus Merchant Union", period: "2024 - Present", desc: "Designed customer onboarding funnels for 12 campus shops." }],
+    certs: [{ id: "cmkt1", name: "Performance Marketing Pro", issuer: "Digital Growth Lab", year: "2024" }],
+    collab: ["Digital Marketing","Content Creation and Media"],
+    interests: ["branding","education"]
+  },
+  {
+    name: "Fatima Bello",
+    username: "sample_write",
+    dept: "English and Literary Studies",
+    state: "Osun",
+    inst: "Obafemi Awolowo University",
+    level: "400 Level",
+    photo: "",
+    headline: "Senior Technical & Brand Copywriter",
+    bio: "Technical and brand copywriting for websites, presentations, and product launch decks.",
+    aboutMe: "Wordsmith turning complex products into clear, compelling narratives. Specializing in landing page copy, case studies, investor pitch decks, and SEO content.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Writing and Communication",
+    avail: "now",
+    skills: [
+      { name: "Copywriting", level: "Advanced", duration: "3 years", desc: "High-converting sales copy, value propositions, and email sequences.", pro: true, collab: true },
+      { name: "Content writing", level: "Advanced", duration: "3 years", desc: "Long-form tech guides, thought leadership, and press announcements.", pro: true, collab: true }
+    ],
+    lookingFor: ["freelance", "join_agency", "mentorship"],
+    socialLinks: { linkedin: "https://linkedin.com", website: "https://medium.com" },
+    portfolio: [
+      {
+        id: "p_wri1",
+        title: "FinStart Investor Pitch & Whitepaper",
+        category: "Copywriting & Content",
+        date: "2024",
+        description: "Authored 24-page fintech overview and investor narrative that helped founders secure campus accelerator funding.",
+        image: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80",
+        url: "https://medium.com",
+        tools: ["Notion", "Google Docs", "Grammarly"],
+        contribution: "Principal Writer"
+      }
+    ],
+    experience: [{ id: "ewri1", role: "Staff Editor", org: "University Herald", period: "2023 - Present", desc: "Supervised editorial staff and student business reporting." }],
+    certs: [{ id: "cwri1", name: "Professional Content Strategist", issuer: "Writers Guild", year: "2023" }],
+    collab: ["Writing and Communication"],
+    interests: ["writing","culture"]
+  },
+  {
+    name: "Tunde Bakare",
+    username: "sample_pm",
+    dept: "Business Administration",
+    state: "Lagos",
+    inst: "University of Lagos",
+    level: "400 Level",
+    photo: "",
+    headline: "Agile Project Manager & Operations Strategist",
+    bio: "Project manager ensuring delivery milestones, agile sprints, and client satisfaction for multi-student agencies.",
+    aboutMe: "Operational catalyst orchestrating multi-disciplinary student teams. Ensuring on-time delivery, scope clarity, and structured client communication.",
+    showLevel: true,
+    expLevel: "Advanced (2-4 yrs)",
+    cat: "Business Consulting",
+    avail: "part",
+    skills: [
+      { name: "Project management", level: "Advanced", duration: "3 years", desc: "Scrum sprints, Kanban workflows, milestone tracking, and QA checkpoints.", pro: true, collab: true },
+      { name: "Business planning", level: "Intermediate", duration: "2 years", desc: "Feasibility studies, client proposals, pricing calculators, and budgeting.", pro: true, collab: true }
+    ],
+    lookingFor: ["create_agency", "partnerships", "teammates"],
+    socialLinks: { linkedin: "https://linkedin.com" },
+    portfolio: [
+      {
+        id: "p_pm1",
+        title: "KolaTech Sprint Roadmap & Delivery",
+        category: "Business Strategy & Research",
+        date: "2024",
+        description: "Structured 6 sprint cycles across 8 developers and designers, reducing bug backlog by 45% and ensuring client milestone delivery.",
+        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80",
+        url: "https://linkedin.com",
+        tools: ["Jira", "Trello", "Slack", "Asana"],
+        contribution: "Scrum Master & PM"
+      }
+    ],
+    experience: [{ id: "epm1", role: "Venture Associate", org: "Lagos Student Incubator", period: "2024 - Present", desc: "Tracked execution KPIs for 10 undergraduate ventures." }],
+    certs: [{ id: "cpm1", name: "Agile Project Master", issuer: "PM Alliance", year: "2024" }],
+    collab: ["Business Consulting"],
+    interests: ["startups","operations"]
+  }
 ];
 
 function seedDemoData() {
-  DEMO.forEach(d => {
-    if (db.users.some(u => u.username === d[1])) return;
-    const salt = rid();
-    db.users.push({
-      id: rid(),
-      role: "student",
-      demo: true,
-      name: d[0],
-      email: d[1] + "@demo.invalid",
-      salt,
-      passHash: "x",
-      verified: true,
-      username: d[1],
-      institution: "University of Lagos",
-      department: d[2],
-      level: "300 Level",
-      country: "Nigeria",
-      state: d[3],
-      intents: ["team","create"],
-      bio: d[4],
-      photo: d[9] || "",
-      skills: d[5].map(s => ({ id: rid(), name: s[0], level: s[1], pro: true, learn: false, collab: true })),
-      experience: [{ id: rid(), role: "Lead Contributor", org: "Campus Innovation Hub", period: "2024 - Present", desc: "Collaborated on multi-disciplinary student client engagements." }],
-      portfolio: [{ id: rid(), label: "Portfolio", url: "https://behance.net" }],
-      certs: [{ id: rid(), name: "Certified Associate", issuer: "Design Institute", year: "2024" }],
-      interests: d[7],
-      availability: d[8],
-      collab: d[6],
-      prefs: { inapp: {}, email: {} },
-      activity: [],
-      created: now() - 86400000 * 30
-    });
+  DEMO_STUDENTS.forEach(d => {
+    let u = db.users.find(x => x.username === d.username);
+    if (!u) {
+      const salt = rid();
+      u = {
+        id: rid(),
+        role: "student",
+        demo: true,
+        name: d.name,
+        email: d.username + "@demo.invalid",
+        salt,
+        passHash: "x",
+        verified: true,
+        username: d.username,
+        institution: d.inst,
+        department: d.dept,
+        level: d.level,
+        country: "Nigeria",
+        state: d.state,
+        intents: ["team","create"],
+        bio: d.bio,
+        aboutMe: d.aboutMe,
+        headline: d.headline,
+        showLevel: d.showLevel,
+        experienceLevel: d.expLevel,
+        category: d.cat,
+        photo: d.photo || "",
+        skills: d.skills.map(s => ({ id: rid(), name: s.name, level: s.level, duration: s.duration, desc: s.desc, pro: s.pro, learn: false, collab: s.collab })),
+        experience: d.experience || [],
+        portfolio: d.portfolio || [],
+        certs: d.certs || [],
+        interests: d.interests || [],
+        availability: d.avail || "now",
+        collab: d.collab || [],
+        lookingFor: d.lookingFor || ["teammates"],
+        socialLinks: d.socialLinks || {},
+        prefs: { inapp: {}, email: {} },
+        activity: [],
+        created: now() - 86400000 * 30
+      };
+      db.users.push(u);
+    } else {
+      // Refresh with rich showcase attributes while preserving existing IDs
+      u.headline = d.headline;
+      u.aboutMe = d.aboutMe;
+      u.experienceLevel = d.expLevel;
+      u.category = d.cat;
+      u.showLevel = d.showLevel;
+      u.lookingFor = d.lookingFor;
+      u.socialLinks = d.socialLinks;
+      if (d.photo) u.photo = d.photo;
+      if (!u.portfolio || u.portfolio.length === 0 || !u.portfolio[0].tools) {
+        u.portfolio = d.portfolio;
+      }
+    }
   });
 
   // Seed sample client
@@ -1958,6 +2339,7 @@ function closeModal() {
 /* ===================== Navigation Setup ===================== */
 const NAV = [
   ["overview", "Overview", "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"],
+  ["talent", "Talent Hub", "M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"],
   ["discover", "Discover", "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"],
   ["agency", "My Agency", "M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"],
   ["marketplace", "Marketplace", "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"],
@@ -2015,7 +2397,7 @@ function shell(active, content) {
       <div class="content" id="page">${content}</div>
     </div>
     <nav class="tabbar" aria-label="Quick navigation">
-      ${["overview", "agency", "marketplace", "opportunities", "profile"].map(tab).join("")}
+      ${["overview", "talent", "agency", "marketplace", "opportunities", "profile"].map(tab).join("")}
     </nav>
   </div>`;
 }
@@ -2391,6 +2773,595 @@ function pageOverview(u) {
   `;
 }
 
+/* ===================== Talent Hub & Student Showcase System ===================== */
+let activeTalentCategory = "all";
+
+function pageTalentHub(u) {
+  const allDepts = [...new Set(students().map(s => s.department).filter(Boolean))].sort();
+  const allInsts = [...new Set(students().map(s => s.institution).filter(Boolean))].sort();
+  const allLocs = [...new Set(students().map(s => loc(s)).filter(Boolean))].sort();
+  const allSkills = [...new Set(students().flatMap(s => (s.skills || []).map(sk => sk.name)).filter(Boolean))].sort();
+
+  return `
+    <div class="talent-hero">
+      <h1>Discover the People Behind the Skills.</h1>
+      <p>Every student has something valuable to contribute. Explore talented students from different institutions and disciplines, discover what they can do, and connect with people who may become your next collaborators, teammates or business partners.</p>
+      <div class="talent-hero-acts">
+        <a class="btn-lime" href="${u && u.role === 'student' ? '#/app/profile' : '#/register'}">SHOWCASE YOUR TALENT ↗</a>
+        <a class="btn-ghost-light" href="#talent-directory" onclick="document.getElementById('talent-directory')?.scrollIntoView({behavior:'smooth'})">EXPLORE TALENT ↓</a>
+      </div>
+    </div>
+
+    <div id="talent-directory">
+      <!-- Category selector chips -->
+      <div class="talent-cats" id="talent-cats-bar">
+        ${[
+          ["all", "All Categories"],
+          ["tech", "Technology & Software"],
+          ["design", "Creative & Design"],
+          ["marketing", "Marketing & Growth"],
+          ["business", "Business & Strategy"],
+          ["finance", "Finance & Accounting"],
+          ["writing", "Writing & Content"],
+          ["engineering", "Engineering & Technical"],
+          ["agric", "Agriculture & Agribusiness"],
+          ["fashion", "Fashion & Arts"],
+          ["education", "Education & Training"]
+        ].map(([slug, name]) => `
+          <button class="talent-cat-btn ${activeTalentCategory === slug ? 'active' : ''}" data-act="filter-talent-cat" data-cat="${slug}">${esc(name)}</button>
+        `).join("")}
+      </div>
+
+      <!-- Filters & Search Bar -->
+      <div class="card" style="margin-bottom:24px;padding:22px" id="dfilters">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+          <div style="grid-column:1/-1">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Search by name, skill, institution, or keyword</label>
+            <input type="text" id="t-search" placeholder="e.g. Sulaiman, React, Lagos, Brand Identity, Computer Science..." data-live="talent" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.95rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Skill</label>
+            <input type="text" id="t-skill" list="talent-skills-list" placeholder="Filter by skill..." data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+            <datalist id="talent-skills-list">
+              ${allSkills.map(s => `<option value="${esc(s)}">`).join("")}
+            </datalist>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Institution</label>
+            <select id="t-inst" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Institutions</option>
+              ${allInsts.map(i => `<option value="${esc(i)}">${esc(i)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Department</label>
+            <select id="t-dept" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Departments</option>
+              ${allDepts.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Location / State</label>
+            <select id="t-loc" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Locations</option>
+              ${allLocs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Experience Level</label>
+            <select id="t-exp" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">All Experience Levels</option>
+              <option value="Beginner">Beginner (Under 1 yr)</option>
+              <option value="Intermediate">Intermediate (1-2 yrs)</option>
+              <option value="Advanced">Advanced (2-4 yrs)</option>
+              <option value="Expert">Expert / Lead (4+ yrs)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Availability</label>
+            <select id="t-avail" data-live="talent" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="">Any Availability</option>
+              <option value="now">Available Now</option>
+              <option value="part">Available Part-Time</option>
+              <option value="later">Specific Projects</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Checkbox intents & Sort -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding-top:14px;border-top:1px solid var(--line)">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:.82rem;font-weight:700;color:var(--forest)">Intent:</span>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-agency" data-live="talent"> Open to agency
+            </label>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-biz" data-live="talent"> Interested in starting a business
+            </label>
+            <label style="font-size:.84rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="t-freelance" data-live="talent"> Available for freelance
+            </label>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px">
+            <label for="t-sort" style="font-size:.82rem;font-weight:700;color:var(--forest)">Sort by:</label>
+            <select id="t-sort" data-live="talent" style="padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:.85rem">
+              <option value="recent">Recently Joined</option>
+              <option value="updated">Recently Updated</option>
+              <option value="complete">Most Complete Profile</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Talent Cards Container -->
+      <div id="talent-results" aria-live="polite"></div>
+    </div>
+  `;
+}
+
+function talentHubResults() {
+  const container = $("#talent-results");
+  if (!container) return;
+  const q = ($("#t-search") ? $("#t-search").value : "").trim().toLowerCase();
+  const sk = ($("#t-skill") ? $("#t-skill").value : "").trim().toLowerCase();
+  const inst = ($("#t-inst") ? $("#t-inst").value : "").trim();
+  const dept = ($("#t-dept") ? $("#t-dept").value : "").trim();
+  const lo = ($("#t-loc") ? $("#t-loc").value : "").trim();
+  const exp = ($("#t-exp") ? $("#t-exp").value : "").trim();
+  const av = ($("#t-avail") ? $("#t-avail").value : "").trim();
+  const onlyAgency = $("#t-agency") ? $("#t-agency").checked : false;
+  const onlyBiz = $("#t-biz") ? $("#t-biz").checked : false;
+  const onlyFreelance = $("#t-freelance") ? $("#t-freelance").checked : false;
+  const sortBy = ($("#t-sort") ? $("#t-sort").value : "recent");
+
+  let list = students();
+
+  // Category filter
+  if (activeTalentCategory && activeTalentCategory !== "all") {
+    const catMap = {
+      tech: "Technology and Software Development",
+      design: "Graphics and Brand Design",
+      marketing: "Digital Marketing",
+      business: "Business Consulting",
+      finance: "Finance and Accounting",
+      writing: "Writing and Communication",
+      engineering: "Engineering and Technical Services",
+      agric: "Agriculture and Agribusiness",
+      fashion: "Fashion and Creative Arts",
+      education: "Education and Training"
+    };
+    const targetCat = catMap[activeTalentCategory];
+    if (targetCat) {
+      list = list.filter(s => s.category === targetCat || (s.collab || []).includes(targetCat) || (s.skills || []).some(k => (k.category || "").includes(targetCat) || (k.name || "").toLowerCase().includes(activeTalentCategory)));
+    }
+  }
+
+  // Text search
+  if (q) {
+    list = list.filter(s => 
+      s.name.toLowerCase().includes(q) ||
+      s.username.toLowerCase().includes(q) ||
+      (s.headline || "").toLowerCase().includes(q) ||
+      (s.bio || "").toLowerCase().includes(q) ||
+      (s.department || "").toLowerCase().includes(q) ||
+      (s.institution || "").toLowerCase().includes(q) ||
+      (s.skills || []).some(k => k.name.toLowerCase().includes(q))
+    );
+  }
+
+  if (sk) list = list.filter(s => (s.skills || []).some(k => k.name.toLowerCase().includes(sk)));
+  if (inst) list = list.filter(s => s.institution === inst);
+  if (dept) list = list.filter(s => s.department === dept);
+  if (lo) list = list.filter(s => loc(s) === lo);
+  if (exp) list = list.filter(s => (s.experienceLevel || "").toLowerCase().includes(exp.toLowerCase()));
+  if (av) list = list.filter(s => s.availability === av);
+  if (onlyAgency) list = list.filter(s => (s.lookingFor || []).includes("join_agency") || (s.intents || []).includes("join"));
+  if (onlyBiz) list = list.filter(s => (s.lookingFor || []).includes("create_agency") || (s.intents || []).includes("create"));
+  if (onlyFreelance) list = list.filter(s => (s.lookingFor || []).includes("freelance"));
+
+  // Sorting
+  if (sortBy === "recent") {
+    list.sort((a, b) => (b.created || 0) - (a.created || 0));
+  } else if (sortBy === "updated") {
+    list.sort((a, b) => (b.updated || b.created || 0) - (a.updated || a.created || 0));
+  } else if (sortBy === "complete") {
+    const score = s => (s.photo ? 20 : 0) + (s.bio ? 20 : 0) + ((s.skills || []).length * 10) + ((s.portfolio || []).length * 15) + ((s.experience || []).length * 10);
+    list.sort((a, b) => score(b) - score(a));
+  }
+
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="empty" style="padding:48px 24px;text-align:center">
+        <h3 style="font-size:1.2rem;color:var(--forest);margin-bottom:6px">No talent profiles matched your filters</h3>
+        <p style="color:var(--muted);margin-bottom:16px">Try widening your search terms or clearing one of your filters.</p>
+        <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('#dfilters input, #dfilters select, #talent-directory input, #talent-directory select').forEach(e => { if(e.type==='checkbox') e.checked=false; else e.value=''; }); talentHubResults();">Clear all filters</button>
+      </div>
+    `;
+    return;
+  }
+
+  const u = me();
+  container.innerHTML = `
+    <div style="margin-bottom:14px;font-size:.88rem;color:var(--muted)">Showing <strong>${list.length}</strong> talented student${list.length === 1 ? "" : "s"} across Nigeria</div>
+    <div class="talent-grid">
+      ${list.map(s => renderTalentCard(s, u)).join("")}
+    </div>
+  `;
+}
+
+function renderTalentCard(s, u) {
+  const availMap = {
+    now: { cls: "active", label: "● Available now" },
+    part: { cls: "forming", label: "◐ Part-time" },
+    later: { cls: "role", label: "○ Project-based" },
+    no: { cls: "needs-members", label: "✕ Unavailable" },
+    unset: { cls: "role", label: "Open" }
+  };
+  const av = availMap[s.availability] || availMap.unset;
+  const portfolioCount = (s.portfolio || []).length;
+  const isSelf = u && u.id === s.id;
+
+  return `
+    <div class="talent-card">
+      <div>
+        <div class="talent-head">
+          <a href="#/talent/${esc(s.username)}" style="text-decoration:none">
+            ${s.photo ? `<img class="talent-avatar" src="${esc(s.photo)}" alt="${esc(s.name)}">` : `<div class="talent-avatar" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:1.3rem">${esc(initials(s.name))}</div>`}
+          </a>
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <a href="#/talent/${esc(s.username)}" style="text-decoration:none;color:var(--forest)"><strong style="font-size:1.05rem;font-family:var(--head)">${esc(s.name)}</strong></a>
+              <span class="badge verified" style="font-size:.7rem;padding:2px 7px">✓ Verified</span>
+            </div>
+            <div class="talent-meta-unboxed">
+              ${esc(s.institution)} · ${esc(s.department)}${s.showLevel !== false && s.level ? ` · ${esc(s.level)}` : ""}
+            </div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:2px">📍 ${esc(loc(s))}</div>
+          </div>
+        </div>
+
+        <div class="talent-headline">${esc(s.headline || (s.department + " Student"))}</div>
+
+        ${s.bio ? `<p style="font-size:.88rem;color:var(--forest);margin-bottom:12px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(s.bio)}</p>` : ""}
+
+        <div class="talent-skills">
+          ${(s.skills || []).slice(0, 4).map(sk => `<span class="talent-skill-tag">${esc(sk.name)}${sk.level ? ` · <span style="color:var(--emerald);font-weight:700">${esc(sk.level)}</span>` : ""}</span>`).join("")}
+          ${(s.skills || []).length > 4 ? `<span class="talent-skill-tag" style="background:none;border:1px dashed var(--line)">+${s.skills.length - 4} more</span>` : ""}
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:.78rem">
+          <span class="badge ${av.cls}">${av.label}</span>
+          ${portfolioCount ? `<span style="color:var(--emerald);font-weight:700">✦ ${portfolioCount} Project${portfolioCount > 1 ? "s" : ""}</span>` : `<span style="color:var(--muted)">Portfolio active</span>`}
+        </div>
+
+        <div class="talent-card-foot">
+          <a class="btn btn-ghost btn-sm" href="#/talent/${esc(s.username)}" style="flex:1;text-align:center">VIEW PROFILE</a>
+          ${isSelf 
+            ? `<a class="btn btn-quiet btn-sm" href="#/app/profile">Edit</a>` 
+            : (u ? connBtn(u, s) : `<button class="btn btn-primary btn-sm" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect</button>`)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function viewStudentTalentProfile(username, u) {
+  const s = db.users.find(x => x.username === username && x.role === "student");
+  if (!s) {
+    return `
+      ${protoBar()}
+      <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
+        <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Student Profile Not Found</h2>
+        <p style="color:var(--muted);margin-bottom:20px">The student username <strong>@${esc(username)}</strong> could not be located in our directory.</p>
+        <a class="btn btn-primary" href="#/talent">← Return to Talent Hub</a>
+      </div>
+    `;
+  }
+
+  ensureStudentDefaults(s);
+  const isOwner = u && u.id === s.id;
+  const isClient = u && u.role === "client";
+
+  const availMap = {
+    now: { cls: "active", label: "● Available now for client work and team collaborations" },
+    part: { cls: "forming", label: "◐ Available part-time (10-15 hrs/week)" },
+    later: { cls: "role", label: "○ Open to specific project milestones" },
+    no: { cls: "needs-members", label: "✕ Currently unavailable" },
+    unset: { cls: "role", label: "Availability open on request" }
+  };
+  const av = availMap[s.availability] || availMap.unset;
+
+  return `
+    ${protoBar()}
+    <div style="max-width:1160px;margin:0 auto;padding:20px 20px 80px">
+      <!-- Breadcrumb / Back Navigation -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <a class="back" href="#/talent" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--forest);text-decoration:none">
+          ← Back to Talent Hub
+        </a>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost btn-sm" data-act="share-profile" data-name="${esc(s.name)}" data-url="${window.location.href}">
+            ${icon("M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13")} Share Profile
+          </button>
+          ${isOwner ? `<a class="btn btn-primary btn-sm" href="#/app/profile">Edit My Talent Profile ↗</a>` : ""}
+        </div>
+      </div>
+
+      <!-- SECTION A: Profile Introduction -->
+      <div class="talent-prof-header">
+        <div class="talent-prof-top">
+          ${s.photo ? `<img class="talent-prof-avatar" src="${esc(s.photo)}" alt="${esc(s.name)}">` : `<div class="talent-prof-avatar" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--emerald);font-size:2.2rem;background:var(--sage)">${esc(initials(s.name))}</div>`}
+          <div style="flex:1;min-width:280px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <h1 style="font-size:2.1rem;font-weight:800;color:var(--forest);margin:0;letter-spacing:-0.02em">${esc(s.name)}</h1>
+              <span class="badge verified">✓ Verified Student</span>
+              ${s.demo ? `<span class="badge role">Demo</span>` : ""}
+            </div>
+            <div style="font-size:1.15rem;font-weight:600;color:var(--emerald);margin:6px 0 10px">${esc(s.headline || (s.department + " Student"))}</div>
+
+            <!-- Zero-Pill Unboxed Metadata -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.92rem;color:var(--muted);align-items:center;margin-bottom:12px">
+              <span>🏛️ ${esc(s.institution)}</span>
+              <span>·</span>
+              <span>📚 ${esc(s.department)}</span>
+              ${s.showLevel !== false && s.level ? `<span>·</span><span>🎓 ${esc(s.level)}</span>` : ""}
+              <span>·</span>
+              <span>📍 ${esc(loc(s))}</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+              <span class="badge ${av.cls}">${av.label}</span>
+              <span style="font-size:.85rem;color:var(--forest);font-weight:600">Level: <strong>${esc(s.experienceLevel || "Intermediate")}</strong></span>
+            </div>
+
+            <div class="talent-prof-actions" style="margin-top:14px">
+              ${isOwner 
+                ? `<a class="btn btn-primary" href="#/app/profile">Edit My Talent Profile</a>` 
+                : (isClient 
+                    ? `<a class="btn btn-primary" href="#/client">Commission Student Agency</a>` 
+                    : (u ? connBtn(u, s) : `<button class="btn btn-primary" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect With Student</button>`))}
+            </div>
+          </div>
+        </div>
+
+        <!-- Bio Summary -->
+        ${s.bio ? `
+          <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">
+            <p style="font-size:1.02rem;line-height:1.65;color:var(--forest);margin:0;max-width:860px">${esc(s.bio)}</p>
+          </div>
+        ` : ""}
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px" class="prof-layout-grid">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- SECTION B: About Me -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>About Me</h2>
+              ${isOwner ? `<a href="#/app/profile" class="btn btn-quiet btn-sm">Edit</a>` : ""}
+            </div>
+            <p style="font-size:.98rem;line-height:1.7;color:var(--forest);margin-bottom:16px">${esc(s.aboutMe || s.bio || "Student collaborator on TeamBud.")}</p>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:16px;background:var(--ivory);padding:18px;border-radius:14px;border:1px solid var(--line)">
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Primary Discipline</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.category || s.department)}</div>
+              </div>
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Experience Tier</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.experienceLevel || "Intermediate (1-2 yrs)")}</div>
+              </div>
+              <div>
+                <strong style="display:block;font-size:.84rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Campus Location</strong>
+                <div style="font-weight:700;color:var(--forest)">${esc(s.institution)} (${esc(loc(s))})</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION C: My Skills -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Skills & Capabilities</h2>
+              ${isOwner ? `<a href="#/app/skills" class="btn btn-quiet btn-sm">+ Add Skill</a>` : ""}
+            </div>
+
+            <!-- Platform Disclaimer Notice -->
+            <div class="disclaimer-banner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <strong>TeamBud Platform Notice:</strong>
+                Skills listed below are self-declared by the student to demonstrate hands-on practice, tools mastery, and project execution interest. They do not constitute formal institutional accreditation or statutory licensing.
+              </div>
+            </div>
+
+            ${(s.skills || []).length ? `
+              <div class="talent-skill-grid">
+                ${s.skills.map(sk => {
+                  const percMap = { Learning: 25, Beginner: 45, Intermediate: 75, Advanced: 95 };
+                  const p = percMap[sk.level] || 60;
+                  return `
+                    <div class="talent-skill-card">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <strong style="font-size:1rem;color:var(--forest)">${esc(sk.name)}</strong>
+                        <span class="badge ${sk.level === "Advanced" ? "active" : "role"}" style="font-size:.7rem">${esc(sk.level || "Intermediate")}</span>
+                      </div>
+                      <div class="skill-bar-wrap">
+                        <div class="skill-bar-fill" style="width:${p}%"></div>
+                      </div>
+                      <div style="font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between;margin-top:4px">
+                        <span>${sk.duration || "Active practice"}</span>
+                        <span>${sk.pro ? "Commercial ready" : "Collaborative"}</span>
+                      </div>
+                      ${sk.desc ? `<p style="font-size:.82rem;color:var(--forest);margin-top:6px;line-height:1.4">${esc(sk.desc)}</p>` : ""}
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            ` : `<div class="empty">No skills catalogued yet.</div>`}
+          </div>
+
+          <!-- SECTION D: My Portfolio (Rich Project Showcase) -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Portfolio Showcase</h2>
+              ${isOwner ? `<button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Project</button>` : ""}
+            </div>
+
+            ${(s.portfolio || []).length ? `
+              <div class="talent-portfolio-grid">
+                ${s.portfolio.map(p => `
+                  <div class="talent-portfolio-item">
+                    <div class="portfolio-img-box">
+                      ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title || p.label)}">` : `
+                        <div style="text-align:center;padding:20px">
+                          <div style="font-size:2rem;margin-bottom:4px">📁</div>
+                          <span style="font-weight:700;color:var(--forest);font-size:.9rem">${esc(p.title || p.label || "Project")}</span>
+                        </div>
+                      `}
+                    </div>
+                    <div style="padding:20px;display:flex;flex-direction:column;flex:1;justify-content:space-between">
+                      <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                          <span class="badge role" style="font-size:.7rem">${esc(p.category || "Project")}</span>
+                          ${p.date ? `<span style="font-size:.78rem;color:var(--muted)">${esc(p.date)}</span>` : ""}
+                        </div>
+                        <h3 style="font-size:1.15rem;font-weight:800;color:var(--forest);margin:0 0 8px">${esc(p.title || p.label)}</h3>
+                        <p style="font-size:.88rem;color:var(--forest);line-height:1.5;margin-bottom:12px">${esc(p.description || "Portfolio work showcase.")}</p>
+
+                        ${(p.tools || []).length ? `
+                          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+                            ${p.tools.map(t => `<span style="font-size:.74rem;background:var(--sage);color:var(--forest);padding:2px 7px;border-radius:4px;font-weight:600">${esc(t)}</span>`).join("")}
+                          </div>
+                        ` : ""}
+
+                        ${p.contribution ? `
+                          <div style="font-size:.82rem;color:var(--muted);background:var(--ivory);padding:8px 12px;border-radius:8px;margin-bottom:12px">
+                            <strong>Role:</strong> ${esc(p.contribution)}
+                          </div>
+                        ` : ""}
+                      </div>
+
+                      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+                        ${p.url ? `<a class="btn btn-ghost btn-sm" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">View Project ↗</a>` : ""}
+                        ${isOwner ? `<button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}">Remove</button>` : ""}
+                      </div>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            ` : `
+              <div class="empty">
+                <p>No showcase projects uploaded yet.</p>
+                ${isOwner ? `<button class="btn btn-primary btn-sm" data-act="modal-add-proj" style="margin-top:10px">+ Add your first project</button>` : ""}
+              </div>
+            `}
+          </div>
+
+          <!-- SECTION E: Experience & Certifications -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Experience & Leadership</h2>
+              ${isOwner ? `<a href="#/app/profile" class="btn btn-quiet btn-sm">Manage</a>` : ""}
+            </div>
+
+            <ul class="list" style="margin-bottom:24px">
+              ${(s.experience || []).length ? s.experience.map(x => `
+                <li class="row" style="padding:14px 0">
+                  <div>
+                    <strong style="font-size:1.02rem;color:var(--forest)">${esc(x.role)}</strong> · <span style="font-weight:600;color:var(--emerald)">${esc(x.org)}</span>
+                    ${x.period ? `<small style="display:block;color:var(--muted);margin-top:2px">${esc(x.period)}</small>` : ""}
+                    ${x.desc ? `<p style="font-size:.9rem;color:var(--forest);margin-top:6px;line-height:1.5">${esc(x.desc)}</p>` : ""}
+                  </div>
+                </li>
+              `).join("") : `<div class="empty">No experience entries recorded.</div>`}
+            </ul>
+
+            <h3 style="font-size:1.1rem;font-weight:700;color:var(--forest);margin-bottom:12px">Certifications & Honors</h3>
+            <ul class="list">
+              ${(s.certs || []).length ? s.certs.map(c => `
+                <li class="row" style="padding:10px 0">
+                  <div>
+                    <strong>${esc(c.name)}</strong>
+                    <small style="display:block;color:var(--muted)">${esc(c.issuer)} · ${esc(c.year)}</small>
+                  </div>
+                </li>
+              `).join("") : `<div class="empty">No certifications listed.</div>`}
+            </ul>
+          </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- SECTION F: What I Am Looking For -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Looking For</h2>
+            </div>
+            <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Opportunities and collaborators this student is actively seeking:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${(s.lookingFor || []).length ? s.lookingFor.map(lf => {
+                const opt = LOOKING_FOR_OPTIONS.find(o => o.id === lf);
+                return `<span class="looking-tag">${opt ? `${opt.icon} ${opt.label}` : esc(lf)}</span>`;
+              }).join("") : `<span class="looking-tag">👥 Open to student collaborations</span>`}
+            </div>
+          </div>
+
+          <!-- SECTION G: Collaboration Availability -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Collaboration Terms</h2>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:.9rem">
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Availability Mode</strong>
+                <div style="font-weight:700;color:var(--forest);margin-top:2px">${av.label}</div>
+              </div>
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Delivery Model</strong>
+                <div style="font-weight:600;color:var(--forest);margin-top:2px">Remote & Campus Hybrid</div>
+              </div>
+              <div>
+                <strong style="display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase">Communication Channel</strong>
+                <div style="font-weight:600;color:var(--forest);margin-top:2px">TeamBud In-App Workspace & Direct Verification</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION H: Contact & Collaboration -->
+          <div class="talent-sec">
+            <div class="talent-sec-h">
+              <h2>Connect & Socials</h2>
+            </div>
+            <div style="background:var(--ivory);padding:14px;border-radius:12px;border:1px solid var(--line);font-size:.84rem;color:var(--forest);line-height:1.5;margin-bottom:16px">
+              <strong>🔒 Protected Contact Notice:</strong>
+              To protect student privacy and prevent unverified solicitations, direct telephone numbers and private email addresses are shielded. Connect through TeamBud to begin collaborating securely.
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+              ${isOwner 
+                ? `<a class="btn btn-primary" href="#/app/profile">Update My Contact Info</a>` 
+                : (u ? connBtn(u, s) : `<button class="btn btn-primary" data-act="prompt-login" data-msg="Log in to connect with ${esc(s.name)}">Connect With Student</button>`)}
+            </div>
+
+            <strong style="display:block;font-size:.82rem;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Verified Public Links</strong>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${(s.socialLinks && s.socialLinks.github) ? `<a href="${esc(s.socialLinks.github)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🌐 GitHub ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.behance) ? `<a href="${esc(s.socialLinks.behance)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🎨 Behance ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.linkedin) ? `<a href="${esc(s.socialLinks.linkedin)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">💼 LinkedIn ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.twitter) ? `<a href="${esc(s.socialLinks.twitter)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🐦 X / Twitter ↗</a>` : ""}
+              ${(s.socialLinks && s.socialLinks.website) ? `<a href="${esc(s.socialLinks.website)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🔗 Website ↗</a>` : ""}
+              ${(!s.socialLinks || Object.keys(s.socialLinks).length === 0) ? `<div style="font-size:.84rem;color:var(--muted)">Connect to view shared external links.</div>` : ""}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function filterOptions() {
   const st = students();
   const uniq = f => [...new Set(st.map(f).filter(Boolean))].sort();
@@ -2653,15 +3624,21 @@ function pageSettings(u) {
 }
 
 function pageProfile(u) {
+  ensureStudentDefaults(u);
   return `
     <div class="page-h">
       <div>
-        <h1>My Profile</h1>
-        <p>Manage your public student presence on TeamBud.</p>
+        <h1>My Talent Profile</h1>
+        <p>Manage your professional student presence and showcase your abilities on TeamBud.</p>
       </div>
+      <span class="acts">
+        <a class="btn btn-ghost btn-sm" href="#/talent/${esc(u.username)}" target="_blank">View Public Profile ↗</a>
+      </span>
     </div>
+
+    <!-- Core Profile Details -->
     <div class="card" style="margin-bottom:24px">
-      <h2>Profile Details</h2>
+      <h2>Profile Details & Identity</h2>
       <form data-form="profile" novalidate style="margin-top:16px">
         <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap">
           ${avatar(u, true)}
@@ -2673,33 +3650,158 @@ function pageProfile(u) {
             <small style="display:block;color:var(--muted);margin-top:4px">JPEG, PNG or WebP under 8 MB.</small>
           </div>
         </div>
+
         <div class="grid2">
-          <div class="full">${field("bio", "Biography", `<textarea id="bio" name="bio" maxlength="500" placeholder="Tell students and agencies about your skills, background and what you love creating.">${esc(u.bio || "")}</textarea>`, "Up to 500 characters.")}</div>
+          <div class="full">
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Professional Headline *</label>
+            <input type="text" name="headline" value="${esc(u.headline || "")}" placeholder="e.g. Lead Brand Strategist & React Developer" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.95rem">
+            <small style="color:var(--muted);display:block;margin-top:4px">A concise statement describing what you do and your core specialty.</small>
+          </div>
+
+          <div class="full">
+            ${field("bio", "Short Biography", `<textarea id="bio" name="bio" maxlength="500" placeholder="Tell students and agencies about your skills, background and what you love creating.">${esc(u.bio || "")}</textarea>`, "Up to 500 characters summary displayed in search cards.")}
+          </div>
+
+          <div class="full">
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">About Me (Full Narrative)</label>
+            <textarea name="aboutMe" rows="4" placeholder="Detail who you are, what you are passionate about, current interests, and what you are learning right now." style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:.92rem;line-height:1.5">${esc(u.aboutMe || "")}</textarea>
+            <small style="color:var(--muted);display:block;margin-top:4px">Displayed on your detailed profile under About Me.</small>
+          </div>
+
           ${field("institution", "Institution", inp("institution", "text", `value="${esc(u.institution || "")}"`))}
           ${field("department", "Department", inp("department", "text", `value="${esc(u.department || "")}"`))}
-          ${field("level", "Academic level", `<select id="level" name="level">${opts(LEVELS, u.level)}</select>`)}
-          ${field("availability", "Current availability", `<select id="availability" name="availability">${opts(AVAIL, u.availability)}</select>`)}
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Academic Level</label>
+            <select id="level" name="level" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(LEVELS, u.level)}
+            </select>
+            <label style="font-size:.82rem;display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer">
+              <input type="checkbox" name="showLevel" ${u.showLevel !== false ? "checked" : ""}> Display academic level publicly on Talent Hub
+            </label>
+          </div>
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Experience Level</label>
+            <select name="experienceLevel" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(EXPERIENCE_LEVELS, u.experienceLevel)}
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Primary Discipline Category</label>
+            <select name="category" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              ${opts(CATS, u.category)}
+            </select>
+          </div>
+
+          ${field("availability", "Current Availability", `<select id="availability" name="availability">${opts(AVAIL, u.availability)}</select>`)}
+
+          <!-- Looking For Section -->
+          <div class="full" style="background:var(--ivory);padding:18px;border-radius:14px;border:1px solid var(--line);margin-top:8px">
+            <label class="field-label" style="font-weight:800;display:block;margin-bottom:8px;color:var(--forest)">What are you looking for on TeamBud?</label>
+            <small style="color:var(--muted);display:block;margin-bottom:12px">Select all goals and collaborator types that apply:</small>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+              ${LOOKING_FOR_OPTIONS.map(opt => `
+                <label class="chk" style="font-size:.88rem">
+                  <input type="checkbox" name="lookingFor" value="${esc(opt.id)}" ${(u.lookingFor || []).includes(opt.id) ? "checked" : ""}>
+                  ${opt.icon} ${esc(opt.label)}
+                </label>
+              `).join("")}
+            </div>
+          </div>
+
+          <!-- Social Links -->
+          <div class="full" style="margin-top:8px">
+            <label class="field-label" style="font-weight:800;display:block;margin-bottom:8px;color:var(--forest)">Professional Social & Portfolio Links</label>
+            <small style="color:var(--muted);display:block;margin-bottom:12px">Your direct contact info (phone/email) is protected. Share verified portfolio and professional profiles:</small>
+            <div class="grid2">
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">GitHub Profile</label>
+                <input type="url" name="github" value="${esc((u.socialLinks && u.socialLinks.github) || "")}" placeholder="https://github.com/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Behance / Dribbble</label>
+                <input type="url" name="behance" value="${esc((u.socialLinks && u.socialLinks.behance) || "")}" placeholder="https://behance.net/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">LinkedIn Profile</label>
+                <input type="url" name="linkedin" value="${esc((u.socialLinks && u.socialLinks.linkedin) || "")}" placeholder="https://linkedin.com/in/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Twitter / X Profile</label>
+                <input type="url" name="twitter" value="${esc((u.socialLinks && u.socialLinks.twitter) || "")}" placeholder="https://x.com/username" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+              <div class="full">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px">Personal Website / Linktree</label>
+                <input type="url" name="website" value="${esc((u.socialLinks && u.socialLinks.website) || "")}" placeholder="https://..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px">
+              </div>
+            </div>
+          </div>
+
           <div class="full">
-            <label class="field-label" style="font-weight:700;display:block;margin-bottom:8px">Collaboration areas</label>
+            <label class="field-label" style="font-weight:700;display:block;margin-bottom:8px">Collaboration Areas</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
               ${CATS.map(c => `<label class="chk"><input type="checkbox" name="collab" value="${esc(c)}" ${(u.collab || []).includes(c) ? "checked" : ""}> ${esc(c)}</label>`).join("")}
             </div>
           </div>
         </div>
-        <button class="btn btn-primary" type="submit" style="margin-top:18px">Save profile</button>
+
+        <button class="btn btn-primary" type="submit" style="margin-top:20px;padding:12px 24px">Save Talent Profile</button>
       </form>
     </div>
 
-    <!-- Experience & Portfolio -->
+    <!-- Rich Portfolio Showcase Manager -->
     <div class="card" style="margin-bottom:24px">
-      <h2>Experience</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:12px">
+        <div>
+          <h2>Portfolio Showcase Projects</h2>
+          <p class="c-sub" style="margin:2px 0 0">Highlight applications, designs, campaigns, or strategic work to attract clients and agency teammates.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Project</button>
+      </div>
+
+      ${(u.portfolio || []).length ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:14px">
+          ${u.portfolio.map(p => `
+            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border-color:#BDD4C7">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                  <span class="badge role" style="font-size:.7rem">${esc(p.category || "Project")}</span>
+                  <button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}" style="color:var(--danger)">Remove</button>
+                </div>
+                <strong style="font-size:1.05rem;color:var(--forest);display:block;margin-bottom:6px">${esc(p.title || p.label)}</strong>
+                <p style="font-size:.86rem;color:var(--muted);line-height:1.4;margin-bottom:10px">${esc(p.description || "Portfolio work showcase.")}</p>
+                ${(p.tools || []).length ? `
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+                    ${p.tools.map(t => `<span style="font-size:.72rem;background:var(--sage);color:var(--forest);padding:2px 6px;border-radius:4px">${esc(t)}</span>`).join("")}
+                  </div>
+                ` : ""}
+              </div>
+              <div style="border-top:1px solid var(--line);padding-top:10px;margin-top:8px">
+                ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="font-size:.84rem;color:var(--emerald);font-weight:700;text-decoration:none">View Live Project ↗</a>` : `<span style="font-size:.82rem;color:var(--muted)">In-app showcase</span>`}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="empty" style="padding:32px 16px;text-align:center">
+          <p style="margin-bottom:12px">You have not added any showcase projects yet.</p>
+          <button class="btn btn-primary btn-sm" data-act="modal-add-proj">+ Add Your First Showcase Project</button>
+        </div>
+      `}
+    </div>
+
+    <!-- Experience & Certifications -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Work Experience & Leadership</h2>
       <ul class="list" style="margin:14px 0">
         ${(u.experience || []).length ? u.experience.map(x => `
           <li class="row">
             <div>
               <strong>${esc(x.role)}</strong> at <span>${esc(x.org)}</span>
               ${x.period ? `<small> · ${esc(x.period)}</small>` : ""}
-              ${x.desc ? `<p style="font-size:.88rem;color:var(--muted)">${esc(x.desc)}</p>` : ""}
+              ${x.desc ? `<p style="font-size:.88rem;color:var(--muted);margin-top:4px">${esc(x.desc)}</p>` : ""}
             </div>
             <button class="btn btn-quiet btn-sm" data-act="rm-exp" data-id="${x.id}">Remove</button>
           </li>
@@ -2713,28 +3815,6 @@ function pageProfile(u) {
           ${field("desc", "Short summary", inp("desc", "text"))}
         </div>
         <button class="btn btn-ghost btn-sm" type="submit" style="margin-top:12px">Add experience</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h2>Portfolio links</h2>
-      <ul class="list" style="margin:14px 0">
-        ${(u.portfolio || []).length ? u.portfolio.map(l => `
-          <li class="row">
-            <div>
-              <strong>${esc(l.label)}</strong>
-              <small><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url)}</a></small>
-            </div>
-            <button class="btn btn-quiet btn-sm" data-act="rm-link" data-id="${l.id}">Remove</button>
-          </li>
-        `).join("") : `<div class="empty">No portfolio links added.</div>`}
-      </ul>
-      <form data-form="add-link" novalidate style="border-top:1px solid var(--line);padding-top:16px;margin-top:16px">
-        <div class="grid2">
-          ${field("label", "Platform label", inp("label", "text", 'placeholder="e.g. Behance, GitHub, Dribbble"'))}
-          ${field("url", "Full URL", inp("url", "url", 'placeholder="https://..."'))}
-        </div>
-        <button class="btn btn-ghost btn-sm" type="submit" style="margin-top:12px">Add link</button>
       </form>
     </div>
   `;
@@ -5466,6 +6546,37 @@ function route() {
   const parts = raw.split("?")[0].split("/").filter(Boolean);
   const u = me();
 
+  // Talent Hub Public / Authenticated Route: #/talent or #/talent/:username
+  if (parts[0] === "talent") {
+    if (parts[1]) {
+      draw(viewStudentTalentProfile(parts[1], u));
+      return;
+    }
+    if (u && u.role === "student") {
+      draw(shell("talent", pageTalentHub(u)));
+    } else {
+      draw(`
+        ${protoBar()}
+        <div style="max-width:1200px;margin:0 auto;padding:20px 24px 80px">
+          <header class="row" style="margin-bottom:28px">
+            <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
+            <div style="display:flex;gap:14px;align-items:center">
+              <a class="link" href="${SITE_URL}" style="text-decoration:none;font-weight:600;color:var(--forest)">Home</a>
+              <a class="link" href="#/talent" style="text-decoration:none;font-weight:700;color:var(--emerald)">Talent Hub</a>
+              <a class="link" href="#/marketplace" style="text-decoration:none;font-weight:600;color:var(--forest)">Marketplace</a>
+              <a class="link" href="#/opportunities" style="text-decoration:none;font-weight:600;color:var(--forest)">Opportunities</a>
+              ${u ? (u.role === "client" ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>` : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`) : `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`}
+            </div>
+          </header>
+          ${pageTalentHub(u)}
+        </div>
+      `);
+    }
+    document.title = "Talent Hub | TeamBud";
+    talentHubResults();
+    return;
+  }
+
   // Public agency route: #/agency/:slug
   if (parts[0] === "agency" && parts[1]) {
     draw(viewPublicAgency(parts[1], u));
@@ -5618,6 +6729,7 @@ function route() {
       const p = parts[1] || "overview";
       const pages = {
         overview: pageOverview,
+        talent: pageTalentHub,
         discover: pageDiscover,
         agency: pageMyAgency,
         marketplace: pageMarketplace,
@@ -5634,6 +6746,7 @@ function route() {
       const navItem = NAV.find(n => n[0] === p);
       document.title = (navItem ? navItem[1] : "Dashboard") + " | TeamBud";
 
+      if (p === "talent") talentHubResults();
       if (p === "discover") discoverResults();
       if (p === "marketplace") marketResults();
       if (p === "opportunities") initOppListeners();
@@ -5750,6 +6863,110 @@ const ACT = {
 
   "close-modal": () => {
     closeModal();
+  },
+
+  "filter-talent-cat": a => {
+    activeTalentCategory = a.dataset.cat || "all";
+    $$(".talent-cat-btn").forEach(b => b.classList.toggle("active", b.dataset.cat === activeTalentCategory));
+    talentHubResults();
+  },
+
+  "prompt-login": a => {
+    const msg = a.dataset.msg || "Log in as a student to connect.";
+    showModal(`
+      <div style="text-align:center;padding:16px 12px">
+        <div style="font-size:2.6rem;margin-bottom:12px">🤝</div>
+        <h3 style="font-size:1.35rem;font-weight:800;color:var(--forest);margin-bottom:8px">Join TeamBud to Connect</h3>
+        <p style="font-size:.92rem;color:var(--muted);margin-bottom:22px;line-height:1.5">${esc(msg)}</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-primary" href="#/login">Log In</a>
+          <a class="btn btn-ghost" href="#/register">Create Student Account</a>
+        </div>
+      </div>
+    `);
+  },
+
+  "share-profile": a => {
+    const url = a.dataset.url || window.location.href;
+    const name = a.dataset.name || "Student";
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast(`Copied ${name}'s profile link!`);
+      }).catch(() => {
+        prompt("Copy this profile link:", url);
+      });
+    } else {
+      prompt("Copy this profile link:", url);
+    }
+  },
+
+  "modal-add-proj": () => {
+    showModal(`
+      <h3 style="font-size:1.35rem;font-weight:800;color:var(--forest);margin-bottom:8px">Add Showcase Project</h3>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:18px">Demonstrate your hands-on ability with real code, design, campaigns, or strategic work.</p>
+      <form data-form="add-portfolio-proj" novalidate>
+        <div class="grid2">
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Project Title *</label>
+            <input type="text" name="title" required placeholder="e.g. UniTrade Campus Commerce App" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Discipline Category</label>
+            <select name="category" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+              <option value="Full-Stack Web App">Full-Stack Web App</option>
+              <option value="Mobile Application">Mobile Application</option>
+              <option value="Brand Identity & Design">Brand Identity & Design</option>
+              <option value="Digital Marketing Campaign">Digital Marketing Campaign</option>
+              <option value="UI & UX Case Study">UI & UX Case Study</option>
+              <option value="Copywriting & Content">Copywriting & Content</option>
+              <option value="Agribusiness & Operations">Agribusiness & Operations</option>
+              <option value="Business Strategy & Research">Business Strategy & Research</option>
+              <option value="Other Project">Other Project</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Completion Date / Year</label>
+            <input type="text" name="date" placeholder="e.g. November 2024" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Project Summary & Impact *</label>
+            <textarea name="description" required rows="3" placeholder="Describe what you built, problem solved, and key features or outcomes." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px"></textarea>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Tools & Technologies (comma-separated)</label>
+            <input type="text" name="tools" placeholder="e.g. React, Tailwind, Figma, Node.js" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Live Demo / Showcase URL</label>
+            <input type="url" name="url" placeholder="https://..." style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Your Specific Role / Contribution</label>
+            <input type="text" name="contribution" placeholder="e.g. Lead Frontend Engineer - built responsive UI & cart state" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+          <div class="full">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Preview Image URL (Optional)</label>
+            <input type="url" name="image" placeholder="https://images.unsplash.com/... or hosted image link" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+          <button type="button" class="btn btn-quiet" data-act="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Project to Showcase</button>
+        </div>
+      </form>
+    `);
+  },
+
+  "rm-portfolio-proj": a => {
+    const id = a.dataset.id;
+    const u = me();
+    if (!u) return;
+    if (confirm("Remove this project from your showcase?")) {
+      u.portfolio = (u.portfolio || []).filter(p => p.id !== id);
+      save();
+      toast("Project removed");
+      rerender();
+    }
   },
 
   "open-quote-modal": a => {
@@ -5987,6 +7204,7 @@ document.addEventListener("input", e => {
   }
   if (t.dataset && t.dataset.live === "disc") discoverResults();
   if (t.dataset && t.dataset.live === "market") marketResults();
+  if (t.dataset && t.dataset.live === "talent") talentHubResults();
 });
 
 document.addEventListener("change", e => {
@@ -5995,6 +7213,7 @@ document.addEventListener("change", e => {
 
   if (L === "disc") discoverResults();
   if (L === "market") marketResults();
+  if (L === "talent") talentHubResults();
   if (L === "country") {
     const sw = $("#state-wrap");
     if (sw) sw.innerHTML = stateField(t.value);
@@ -6389,15 +7608,51 @@ document.addEventListener("submit", async e => {
   if (!u) return route();
 
   if (kind === "profile") {
+    u.headline = (v.headline || "").trim() || u.headline;
     u.bio = (v.bio || "").trim().slice(0, 500);
+    u.aboutMe = (v.aboutMe || "").trim() || u.aboutMe;
     u.institution = (v.institution || "").trim() || u.institution;
     u.department = (v.department || "").trim() || u.department;
     u.level = v.level || u.level;
+    u.showLevel = f.elements.showLevel ? f.elements.showLevel.checked : true;
+    u.experienceLevel = v.experienceLevel || u.experienceLevel;
+    u.category = v.category || u.category;
     u.availability = v.availability || "unset";
     u.collab = $$("input[name=collab]:checked", f).map(i => i.value);
-    log(u, "Updated student profile details");
+    u.lookingFor = $$("input[name=lookingFor]:checked", f).map(i => i.value);
+    u.socialLinks = {
+      github: (v.github || "").trim(),
+      behance: (v.behance || "").trim(),
+      linkedin: (v.linkedin || "").trim(),
+      twitter: (v.twitter || "").trim(),
+      website: (v.website || "").trim()
+    };
+    log(u, "Updated student talent profile details");
     save();
-    toast("Profile saved");
+    toast("Talent profile saved");
+    return rerender();
+  }
+
+  if (kind === "add-portfolio-proj") {
+    need("title", "Enter a project title.");
+    need("description", "Enter a project description.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    u.portfolio = u.portfolio || [];
+    const tools = (v.tools || "").split(",").map(t => t.trim()).filter(Boolean);
+    u.portfolio.unshift({
+      id: rid(),
+      title: v.title.trim(),
+      category: v.category || "Project",
+      date: (v.date || "").trim() || "2024",
+      description: v.description.trim(),
+      tools,
+      url: (v.url || "").trim(),
+      contribution: (v.contribution || "").trim(),
+      image: (v.image || "").trim()
+    });
+    save();
+    closeModal();
+    toast("Project added to your portfolio showcase!");
     return rerender();
   }
 

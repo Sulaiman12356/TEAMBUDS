@@ -125,6 +125,78 @@ def get_extra_css():
 
 .paystack-modal{border:2px solid #09A5DB;border-radius:16px;background:var(--white);padding:28px}
 .paystack-banner{background:linear-gradient(135deg,#011B33 0%,#09A5DB 100%);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+
+/* ===================== Talent Hub & Student Showcase ===================== */
+.talent-hero{background:linear-gradient(145deg, #0F5540 0%, #176B50 70%, #1f7d5f 100%);color:#fff;border-radius:22px;padding:48px 36px;margin-bottom:32px;position:relative;overflow:hidden;box-shadow:0 16px 36px rgba(15,85,64,0.18)}
+.talent-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(197,232,108,0.18) 0%, transparent 70%);pointer-events:none}
+.talent-hero h1{color:#fff;font-size:2.4rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px;max-width:700px}
+.talent-hero p{color:#E5EDE2;font-size:1.08rem;line-height:1.6;max-width:680px;margin-bottom:24px}
+.talent-hero-acts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.talent-hero .btn-lime{background:var(--lime);color:var(--forest);font-weight:700;border:none;padding:12px 22px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-family:var(--head);transition:all .15s}
+.talent-hero .btn-lime:hover{background:#b5de54;transform:translateY(-1px)}
+.talent-hero .btn-ghost-light{border:1px solid rgba(229,237,226,0.5);color:#fff;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s}
+.talent-hero .btn-ghost-light:hover{background:rgba(255,255,255,0.12)}
+
+.talent-cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:20px;scrollbar-width:thin}
+.talent-cat-btn{padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--white);font-size:.85rem;font-weight:600;color:var(--forest);cursor:pointer;white-space:nowrap;transition:all .15s}
+.talent-cat-btn:hover{border-color:var(--emerald);background:var(--ivory)}
+.talent-cat-btn.active{background:var(--emerald);color:#fff;border-color:var(--emerald);box-shadow:0 2px 8px rgba(23,107,80,0.2)}
+
+.talent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-top:20px}
+.talent-card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(24,68,55,0.03);transition:transform .18s,box-shadow .18s,border-color .18s;position:relative}
+.talent-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(24,68,55,0.08);border-color:#BDD4C7}
+.talent-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px}
+.talent-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--lime);background:var(--sage);flex-shrink:0}
+.talent-meta-unboxed{font-size:.84rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.talent-headline{font-size:.95rem;font-weight:700;color:var(--forest);margin:8px 0 10px;line-height:1.4}
+.talent-skills{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.talent-skill-tag{font-size:.76rem;background:var(--sage);color:var(--forest);padding:3px 9px;border-radius:6px;font-weight:600}
+.talent-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+.talent-prof-header{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:36px;margin-bottom:28px;box-shadow:0 4px 16px rgba(24,68,55,0.04);position:relative}
+.talent-prof-top{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.talent-prof-avatar{width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--lime);box-shadow:0 6px 18px rgba(23,107,80,0.15);flex-shrink:0}
+.talent-prof-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+
+.talent-sec{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:28px;margin-bottom:24px}
+.talent-sec-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.talent-sec-h h2{font-size:1.35rem;font-weight:800;color:var(--forest);margin:0}
+
+.talent-skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.talent-skill-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--ivory);transition:border-color .15s}
+.talent-skill-card:hover{border-color:var(--emerald)}
+.skill-bar-wrap{height:6px;background:rgba(23,107,80,0.12);border-radius:999px;margin:8px 0;overflow:hidden}
+.skill-bar-fill{height:100%;border-radius:999px;background:var(--emerald)}
+
+.talent-portfolio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+.talent-portfolio-item{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--white);display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,0.02);transition:transform .18s,box-shadow .18s}
+.talent-portfolio-item:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(24,68,55,0.08)}
+.portfolio-img-box{width:100%;height:190px;background:var(--sage);object-fit:cover;display:flex;align-items:center;justify-content:center;position:relative}
+.portfolio-img-box img{width:100%;height:100%;object-fit:cover}
+
+.looking-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;border:1px solid #BDD4C7;background:var(--sage);color:var(--forest);font-size:.86rem;font-weight:600;margin:4px}
+.disclaimer-banner{background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px 18px;color:#92400E;font-size:.88rem;margin:16px 0;display:flex;gap:12px;align-items:flex-start;line-height:1.5}
+
+/* ===================== Onboarding & Dashboard Enhancements ===================== */
+.onboarding-wrap{max-width:760px;margin:36px auto;padding:32px 28px;background:var(--white);border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 30px rgba(24,68,55,0.06)}
+.onboarding-stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;position:relative}
+.onboarding-stepper::before{content:'';position:absolute;top:18px;left:24px;right:24px;height:3px;background:var(--line);z-index:0}
+.ob-step-node{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.ob-step-circle{width:36px;height:36px;border-radius:50%;background:var(--white);border:2px solid var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;transition:all .2s}
+.ob-step-node.active .ob-step-circle{border-color:var(--emerald);background:var(--emerald);color:#fff;box-shadow:0 0 0 4px rgba(23,107,80,0.18)}
+.ob-step-node.completed .ob-step-circle{border-color:var(--lime);background:var(--lime);color:var(--forest)}
+.ob-step-label{font-size:.75rem;font-weight:700;color:var(--muted);white-space:nowrap}
+.ob-step-node.active .ob-step-label{color:var(--emerald);font-weight:800}
+
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:16px 0}
+.rec-card{background:var(--ivory);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .15s}
+.rec-card:hover{border-color:var(--emerald)}
+
+.member-talent-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;gap:14px;align-items:flex-start}
+.tab-strip{display:flex;gap:6px;border-bottom:2px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tab-btn{background:none;border:none;padding:10px 16px;font-family:var(--head);font-size:.9rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn:hover{color:var(--forest)}
+.tab-btn.active{color:var(--emerald);border-bottom-color:var(--emerald);font-weight:800}
 """
 
 print("Loaded get_extra_css")

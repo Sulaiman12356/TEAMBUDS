@@ -98,10 +98,105 @@ try {
     home = home.replace('href="/agency/\'+esc(a.slug)+\'"', 'href="teambud-app.html#/agency/\'+esc(a.slug)+\'"')
     home = home.replace('href="/agency/\'+esc(a.slug)+\'/quote"', 'href="teambud-app.html#/agency/\'+esc(a.slug)+\'"')
 
-    # Wire opportunities in home navigation
+    # Wire opportunities & Talent Hub in home navigation
     home = home.replace('<li><a href="#opportunities">Opportunities</a></li>', '<li><a href="teambud-app.html#/opportunities">Opportunities</a></li>')
     home = home.replace('<a class="link" href="#opportunities">Opportunities</a>', '<a class="link" href="teambud-app.html#/opportunities">Opportunities</a>')
-    home = home.replace('<a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>', '<a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>\n        <a class="btn btn-ghost-light" href="teambud-app.html#/opportunities">Opportunities Centre ↗</a>')
+    
+    # Add Talent Hub between Home and How It Works
+    home = home.replace('<li><a href="#home" aria-current="page">Home</a></li>\n          <li><a href="#how">How It Works</a></li>', '<li><a href="#home" aria-current="page">Home</a></li>\n          <li><a href="teambud-app.html#/talent">Talent Hub</a></li>\n          <li><a href="#how">How It Works</a></li>')
+    home = home.replace('<li><a href="#home" aria-current="page">Home</a></li>\n        <li><a href="#how">How It Works</a></li>', '<li><a href="#home" aria-current="page">Home</a></li>\n        <li><a href="teambud-app.html#/talent">Talent Hub</a></li>\n        <li><a href="#how">How It Works</a></li>')
+    home = home.replace('<a class="link" href="#home">Home</a>\n    <a class="link" href="#how">How It Works</a>', '<a class="link" href="#home">Home</a>\n    <a class="link" href="teambud-app.html#/talent">Talent Hub</a>\n    <a class="link" href="#how">How It Works</a>')
+    home = home.replace('<li><a href="#about">About TeamBud</a></li>\n          <li><a href="#how">How It Works</a></li>', '<li><a href="#about">About TeamBud</a></li>\n          <li><a href="teambud-app.html#/talent">Talent Hub</a></li>\n          <li><a href="#how">How It Works</a></li>')
+    
+    home = home.replace('<a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>', '<a class="btn btn-ghost-light" href="teambud-app.html#/talent">Explore Talent Hub ↗</a>\n        <a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>\n        <a class="btn btn-ghost-light" href="teambud-app.html#/opportunities">Opportunities Centre ↗</a>')
+
+    # Section 12: Add new Talent Showcase & Discovery Journey section before HOW IT WORKS
+    showcase_section = """<!-- TALENT SHOWCASE & DISCOVERY JOURNEY -->
+<section class="bg-sage" id="showcase" style="padding:72px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <div style="max-width:840px;margin:0 auto 36px;text-align:center">
+      <span class="eyebrow" style="display:inline-block;margin-bottom:8px;font-size:.82rem;font-weight:700;color:var(--emerald);letter-spacing:.05em;text-transform:uppercase">Talent Discovery</span>
+      <h2 style="font-size:2.2rem;font-weight:800;color:var(--forest);line-height:1.25;margin-bottom:14px">BEFORE YOU BUILD A TEAM, LET THE WORLD SEE WHAT YOU CAN DO.</h2>
+      <p style="font-size:1.08rem;color:var(--forest);line-height:1.65;margin-bottom:12px;font-weight:600">You don't have to wait until you have an agency before people discover your abilities.</p>
+      <p style="font-size:1rem;color:var(--muted);line-height:1.6">TeamBud gives you a place to showcase your skills, share your work, connect with other talented students and discover opportunities to collaborate. Whether you're still learning or already working on professional projects, your journey can start here.</p>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:36px">
+      <div style="background:var(--white);padding:22px 18px;border-radius:14px;border:1px solid var(--line);text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">👤</div>
+        <strong style="color:var(--forest);display:block;margin-bottom:4px;font-size:.95rem">Create Your Talent Profile</strong>
+        <p style="font-size:.84rem;color:var(--muted);margin:0">Build a verified presence highlighting your capabilities.</p>
+      </div>
+      <div style="background:var(--white);padding:22px 18px;border-radius:14px;border:1px solid var(--line);text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">📁</div>
+        <strong style="color:var(--forest);display:block;margin-bottom:4px;font-size:.95rem">Showcase Your Portfolio</strong>
+        <p style="font-size:.84rem;color:var(--muted);margin:0">Display projects, tools used, and proven work samples.</p>
+      </div>
+      <div style="background:var(--white);padding:22px 18px;border-radius:14px;border:1px solid var(--line);text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">🔍</div>
+        <strong style="color:var(--forest);display:block;margin-bottom:4px;font-size:.95rem">Discover Diverse Talents</strong>
+        <p style="font-size:.84rem;color:var(--muted);margin:0">Find students with complementary and multidisciplinary skills.</p>
+      </div>
+      <div style="background:var(--white);padding:22px 18px;border-radius:14px;border:1px solid var(--line);text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">🤝</div>
+        <strong style="color:var(--forest);display:block;margin-bottom:4px;font-size:.95rem">Connect with Collaborators</strong>
+        <p style="font-size:.84rem;color:var(--muted);margin:0">Send intro notes and build trusted peer partnerships.</p>
+      </div>
+      <div style="background:var(--white);padding:22px 18px;border-radius:14px;border:1px solid var(--line);text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">🚀</div>
+        <strong style="color:var(--forest);display:block;margin-bottom:4px;font-size:.95rem">Find Opportunities</strong>
+        <p style="font-size:.84rem;color:var(--muted);margin:0">Work together on client contracts, challenges, and startups.</p>
+      </div>
+    </div>
+
+    <!-- Visual Representation of the Journey -->
+    <div style="background:var(--white);border-radius:18px;border:1px solid var(--line);padding:28px 24px;margin-bottom:32px;box-shadow:0 4px 16px rgba(24,68,55,0.04)">
+      <div style="text-align:center;font-size:.84rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:20px">The Collaborative Journey: From Individual Talent to Agency Enterprise</div>
+      <div style="display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:12px;text-align:center">
+        <div style="flex:1;min-width:130px">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--sage);color:var(--emerald);font-weight:800;font-size:1.15rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">1</div>
+          <strong style="font-size:.92rem;color:var(--forest);display:block">Individual Talents</strong>
+          <small style="color:var(--muted);font-size:.78rem">Showcase verified skills</small>
+        </div>
+        <div style="color:var(--emerald);font-weight:800;font-size:1.3rem">→</div>
+        <div style="flex:1;min-width:130px">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--sage);color:var(--emerald);font-weight:800;font-size:1.15rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">2</div>
+          <strong style="font-size:.92rem;color:var(--forest);display:block">Connections</strong>
+          <small style="color:var(--muted);font-size:.78rem">Find complementary peers</small>
+        </div>
+        <div style="color:var(--emerald);font-weight:800;font-size:1.3rem">→</div>
+        <div style="flex:1;min-width:130px">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--sage);color:var(--emerald);font-weight:800;font-size:1.15rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">3</div>
+          <strong style="font-size:.92rem;color:var(--forest);display:block">Teams</strong>
+          <small style="color:var(--muted);font-size:.78rem">Form 3 to 10 member units</small>
+        </div>
+        <div style="color:var(--emerald);font-weight:800;font-size:1.3rem">→</div>
+        <div style="flex:1;min-width:130px">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--sage);color:var(--emerald);font-weight:800;font-size:1.15rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">4</div>
+          <strong style="font-size:.92rem;color:var(--forest);display:block">Agencies</strong>
+          <small style="color:var(--muted);font-size:.78rem">Launch public agency brand</small>
+        </div>
+        <div style="color:var(--emerald);font-weight:800;font-size:1.3rem">→</div>
+        <div style="flex:1;min-width:130px">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--lime);color:var(--forest);font-weight:800;font-size:1.15rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">5</div>
+          <strong style="font-size:.92rem;color:var(--forest);display:block">Clients</strong>
+          <small style="color:var(--muted);font-size:.78rem">Deliver real projects & earn</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTAs -->
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap">
+      <a class="btn btn-primary" href="teambud-app.html#/talent" style="padding:14px 28px;font-size:1rem">EXPLORE TALENT ↗</a>
+      <a class="btn btn-ghost" href="teambud-app.html#/register" style="padding:14px 26px;font-size:1rem">CREATE YOUR TALENT PROFILE</a>
+    </div>
+  </div>
+</section>
+"""
+    if '<!-- HOW IT WORKS -->' in home and 'id="showcase"' not in home:
+        home = home.replace('<!-- HOW IT WORKS -->', showcase_section + '\n<!-- HOW IT WORKS -->')
+
 
     import base64
     with open('public/sulaiman-web.jpg', 'rb') as f:
