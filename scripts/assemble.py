@@ -81,7 +81,7 @@ try {
           categories: [a.mainCategory].concat(a.additionalServices || []).filter(Boolean),
           members: (a.members || []).length,
           institution: a.institution || '',
-          verified: true,
+          verified: a.verifiedStatus === 'verified',
           available: a.availability !== 'unavailable',
           portfolio: a.portfolio || [],
           slug: a.slug
@@ -109,6 +109,15 @@ try {
     home = home.replace('<li><a href="#about">About TeamBud</a></li>\n          <li><a href="#how">How It Works</a></li>', '<li><a href="#about">About TeamBud</a></li>\n          <li><a href="teambud-app.html#/talent">Talent Hub</a></li>\n          <li><a href="#how">How It Works</a></li>')
     
     home = home.replace('<a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>', '<a class="btn btn-ghost-light" href="teambud-app.html#/talent">Explore Talent Hub ↗</a>\n        <a class="btn btn-ghost-light" href="teambud-app.html#/register/client">Submit a Project</a>\n        <a class="btn btn-ghost-light" href="teambud-app.html#/opportunities">Opportunities Centre ↗</a>')
+
+    # Wire landing page footer links (Help, Contact, Legal, Search, Admin)
+    home = home.replace('<li><a href="/contact">Contact</a></li>', '<li><a href="teambud-app.html#/search">Global Search</a></li>\n          <li><a href="teambud-app.html#/contact">Contact</a></li>')
+    home = home.replace('<li><a href="/help">Help Centre</a></li>', '<li><a href="teambud-app.html#/help">Help Centre</a></li>')
+    home = home.replace('<li><a href="/privacy">Privacy Policy</a></li>', '<li><a href="teambud-app.html#/privacy">Privacy Policy</a></li>')
+    home = home.replace('<li><a href="/terms">Terms of Service</a></li>', '<li><a href="teambud-app.html#/terms">Terms of Service</a></li>')
+    home = home.replace('<li><a href="/community-guidelines">Community Guidelines</a></li>', '<li><a href="teambud-app.html#/community-guidelines">Community Guidelines</a></li>')
+    home = home.replace('<li><a href="/agency-guidelines">Agency Guidelines</a></li>', '<li><a href="teambud-app.html#/agency-guidelines">Agency Guidelines</a></li>\n          <li><a href="teambud-app.html#/payment-policy">Payment &amp; Refund Policy</a></li>')
+    home = home.replace('<li><a href="teambud-app.html#/login">Log In</a></li>', '<li><a href="teambud-app.html#/login">Log In</a></li>\n          <li><a href="teambud-app.html#/admin">Admin Portal</a></li>')
 
     # Section 12: Add new Talent Showcase & Discovery Journey section before HOW IT WORKS
     showcase_section = """<!-- TALENT SHOWCASE & DISCOVERY JOURNEY -->

@@ -1,7 +1,7 @@
 "use strict";
 /* ===================== Config & Constants ===================== */
 const SITE_URL = location.pathname.endsWith(".html") ? "teambud-home.html" : "/";
-const CATS = [
+const DEFAULT_CATS = [
   "Technology and Software Development",
   "Graphics and Brand Design",
   "Digital Marketing",
@@ -18,6 +18,7 @@ const CATS = [
   "Event Planning and Management",
   "Other Professional Services"
 ];
+const CATS = DEFAULT_CATS;
 const LEVELS = ["100 Level","200 Level","300 Level","400 Level","500 Level","600 Level","ND 1","ND 2","HND 1","HND 2","NCE 1","NCE 2","NCE 3","Postgraduate","Other"];
 const COUNTRIES = ["Nigeria","Ghana","Kenya","South Africa","Cameroon","Uganda","Rwanda","Other"];
 const NG_STATES = ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT Abuja","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
@@ -103,6 +104,22 @@ const Store = (() => {
   };
 })();
 
+const DEFAULT_PLATFORM_SETTINGS = () => ({
+  platformName: "TeamBud",
+  tagline: "Find Your People. Build Your Future.",
+  brandLogoUrl: "",
+  supportEmail: "",
+  announcement: "",
+  announcementActive: false,
+  paystackMode: "test",
+  emailTemplates: {
+    welcomeSubject: "Welcome to TeamBud",
+    welcomeBody: "Complete your student talent profile and start connecting with peers across disciplines.",
+    verificationSubject: "TeamBud Verification Status Update",
+    verificationBody: "Your verification review has been completed by TeamBud Administration."
+  }
+});
+
 const KEY = "teambud_prototype_v1";
 const fresh = () => ({
   users: [],
@@ -116,6 +133,11 @@ const fresh = () => ({
   opportunities: [],
   messages: [],
   reports: [],
+  reviews: [],
+  contactMessages: [],
+  verificationRequests: [],
+  categories: DEFAULT_CATS.slice(),
+  platformSettings: DEFAULT_PLATFORM_SETTINGS(),
   fails: {}
 });
 
@@ -128,8 +150,62 @@ try {
   if (!db.opportunities) db.opportunities = [];
   if (!db.messages) db.messages = [];
   if (!db.reports) db.reports = [];
+  if (!db.reviews) db.reviews = [];
+  if (!db.contactMessages) db.contactMessages = [];
+  if (!db.verificationRequests) db.verificationRequests = [];
+  if (!db.categories || !db.categories.length) db.categories = DEFAULT_CATS.slice();
+  if (!db.platformSettings) db.platformSettings = DEFAULT_PLATFORM_SETTINGS();
 } catch (e) {
   db = fresh();
+}
+
+function getCategories() {
+  return (db.categories && Array.isArray(db.categories) && db.categories.length) ? db.categories : DEFAULT_CATS;
+}
+
+function ensurePlatformDefaults() {
+  let ch = false;
+  if (!db.reviews) { db.reviews = []; ch = true; }
+  if (!db.contactMessages) { db.contactMessages = []; ch = true; }
+  if (!db.verificationRequests) { db.verificationRequests = []; ch = true; }
+  if (!db.categories || !db.categories.length) { db.categories = DEFAULT_CATS.slice(); ch = true; }
+  if (!db.platformSettings) { db.platformSettings = DEFAULT_PLATFORM_SETTINGS(); ch = true; }
+  if (!db.users.some(u => u.role === "admin")) {
+    const salt = rid();
+    db.users.push({
+      id: "usr_admin_root",
+      role: "admin",
+      demo: true,
+      name: "TeamBud Administrator",
+      email: "admin@teambud.org",
+      salt,
+      passHash: "x",
+      verified: true,
+      username: "teambud_admin",
+      prefs: { inapp: {}, email: {} },
+      activity: [{ t: now(), text: "Initialized platform administration account" }],
+      created: now() - 86400000 * 60
+    });
+    ch = true;
+  }
+  (db.agencies || []).forEach(a => {
+    if (!a.verifiedStatus) {
+      a.verifiedStatus = a.id === "ag_apex" ? "verified" : "unverified";
+      ch = true;
+    }
+    if (a.suspended === undefined) { a.suspended = false; ch = true; }
+  });
+  (db.users || []).forEach(u => {
+    if (u.role === "student" && u.studentVerificationStatus === undefined) {
+      u.studentVerificationStatus = (u.username === "mr_clarity" || u.username === "sample_dev") ? "verified" : (u.username === "sample_write" ? "pending" : "none");
+      ch = true;
+    }
+    if (u.role === "client" && !u.savedAgencies) {
+      u.savedAgencies = [];
+      ch = true;
+    }
+  });
+  if (ch) save();
 }
 
 const save = () => Store.set(KEY, JSON.stringify(db));
@@ -159,7 +235,13 @@ const me = () => {
     save();
     return null;
   }
-  return db.users.find(u => u.id === s.uid) || null;
+  const u = db.users.find(u => u.id === s.uid) || null;
+  if (u && u.suspended) {
+    db.session = null;
+    save();
+    return null;
+  }
+  return u;
 };
 
 const userById = id => db.users.find(u => u.id === id);
@@ -205,10 +287,94 @@ function ensureStudentDefaults(u) {
     }
     return p;
   });
+  if (!u.profileVisibility) {
+    u.profileVisibility = "public";
+  }
+  u.deactivated = !!u.deactivated;
+  u.suspended = !!u.suspended;
+  if (!u.studentVerificationStatus) {
+    u.studentVerificationStatus = "none";
+  }
   return u;
 }
 
-const students = () => db.users.filter(u => u.role === "student" && u.verified).map(ensureStudentDefaults);
+function studentVerificationBadge(s) {
+  if (!s) return "";
+  if (s.suspended) return `<span class="badge needs-members">Suspended</span>`;
+  if (s.studentVerificationStatus === "verified") {
+    return `<span class="badge verified" title="Student status verified by TeamBud. Verification confirms student identity only and does not certify professional competence.">✓ Student Verified</span>`;
+  }
+  if (s.studentVerificationStatus === "pending") {
+    return `<span class="badge forming" title="Student verification request is currently under review.">◐ Verification Pending</span>`;
+  }
+  if (s.verified) {
+    return `<span class="badge role" title="Email verified account. Not yet student-ID verified.">✓ Email Verified</span>`;
+  }
+  return `<span class="badge role">Registered</span>`;
+}
+
+function agencyVerificationBadge(a) {
+  if (!a) return "";
+  if (a.suspended) return `<span class="badge needs-members">Suspended Agency</span>`;
+  if (a.status === "forming") return `<span class="badge forming">Forming Agency (${(a.members || []).length}/3)</span>`;
+  if (a.status === "needs_members") return `<span class="badge needs-members">Needs Members</span>`;
+  if (a.verifiedStatus === "verified") {
+    return `<span class="badge verified" title="Agency identity reviewed by TeamBud. Verification confirms operational standing only and does not certify commercial competence.">✓ Agency Verified</span>`;
+  }
+  if (a.verifiedStatus === "pending") {
+    return `<span class="badge active" title="Active agency with verification under review.">Active · Verification Pending</span>`;
+  }
+  return `<span class="badge active" title="Active agency meeting the 3–10 member minimum. Not yet administrator-verified.">Active Agency (Unverified)</span>`;
+}
+
+function toPublicStudentProfile(s) {
+  if (!s) return null;
+  ensureStudentDefaults(s);
+  return {
+    id: s.id,
+    role: s.role,
+    demo: !!s.demo,
+    verified: !!s.verified,
+    studentVerificationStatus: s.studentVerificationStatus || "none",
+    suspended: !!s.suspended,
+    name: s.name,
+    username: s.username,
+    institution: s.institution,
+    department: s.department,
+    level: s.level,
+    showLevel: s.showLevel !== false,
+    country: s.country,
+    state: s.state,
+    headline: s.headline,
+    bio: s.bio,
+    aboutMe: s.aboutMe,
+    experienceLevel: s.experienceLevel,
+    category: s.category,
+    photo: s.photo || "",
+    skills: (s.skills || []).slice(),
+    experience: (s.experience || []).slice(),
+    portfolio: (s.portfolio || []).slice(),
+    certs: (s.certs || []).slice(),
+    lookingFor: (s.lookingFor || []).slice(),
+    availability: s.availability || "unset",
+    collab: (s.collab || []).slice(),
+    socialLinks: Object.assign({}, s.socialLinks || {}),
+    profileVisibility: s.profileVisibility || "public",
+    created: s.created,
+    updated: s.updated
+  };
+}
+
+const students = (viewer = null) => db.users
+  .filter(u => {
+    if (u.role !== "student" || !u.verified || u.deactivated || u.suspended) return false;
+    const vis = u.profileVisibility || "public";
+    if (vis === "hidden") return false;
+    if (vis === "students_only" && (!viewer || viewer.role !== "student")) return false;
+    if (viewer && ((viewer.blockedUsers || []).includes(u.id) || (u.blockedUsers || []).includes(viewer.id))) return false;
+    return true;
+  })
+  .map(ensureStudentDefaults);
 
 function log(u, text) {
   u.activity = u.activity || [];
@@ -605,6 +771,10 @@ function seedDemoData() {
         socialLinks: d.socialLinks || {},
         prefs: { inapp: {}, email: {} },
         activity: [],
+        onboarded: true,
+        hasSeenOnboarding: true,
+        savedOpps: [],
+        blockedUsers: [],
         created: now() - 86400000 * 30
       };
       db.users.push(u);
@@ -617,6 +787,8 @@ function seedDemoData() {
       u.showLevel = d.showLevel;
       u.lookingFor = d.lookingFor;
       u.socialLinks = d.socialLinks;
+      u.onboarded = true;
+      u.hasSeenOnboarding = true;
       if (d.photo) u.photo = d.photo;
       if (!u.portfolio || u.portfolio.length === 0 || !u.portfolio[0].tools) {
         u.portfolio = d.portfolio;
@@ -747,6 +919,21 @@ function seedDemoData() {
               { id: rid(), userId: uDev.id, text: "Backend API endpoints verified. Integrating live map feed next.", t: now() - 86400000 }
             ],
             createdAt: now() - 86400000 * 5
+          },
+          {
+            id: "proj_finpulse_completed",
+            title: "Campus Micro-Finance Web Platform MVP",
+            desc: "Delivered responsive onboarding portal and loan management ledger for campus cooperatives.",
+            assignedTo: [uDev.id, uDes.id, uMkt.id],
+            deadline: "2026-10-30",
+            status: "Completed",
+            deliverables: [
+              { id: rid(), name: "finpulse-mvp-handover.zip", size: 8420000, uploadedAt: now() - 86400000 * 8, uploadedBy: uDev.id }
+            ],
+            comments: [
+              { id: rid(), userId: uDev.id, text: "Final milestone signed off by client and marked Completed.", t: now() - 86400000 * 7 }
+            ],
+            createdAt: now() - 86400000 * 21
           }
         ],
         messages: [
@@ -919,6 +1106,36 @@ function seedDemoData() {
             createdAt: now() - 3600000 * 12
           },
           t: now() - 86400000 * 2
+        });
+        db.requests.push({
+          id: "req_finpulse_done",
+          uid: clientUser.id,
+          clientName: clientUser.name,
+          clientOrg: clientUser.name,
+          title: "Campus Micro-Finance Web Platform MVP",
+          category: "Technology and Software Development",
+          budget: "₦150,000",
+          desc: "Onboarding portal and loan management ledger for campus cooperatives.",
+          targetAgencyId: apexId,
+          deliveryDate: "2026-10-30",
+          referenceLink: "",
+          communicationPref: "In-App Messaging",
+          status: "active",
+          clarifications: [],
+          quotation: {
+            id: rid(),
+            agencyId: apexId,
+            agencyName: "Apex Creative Studio",
+            price: "₦150,000",
+            currency: "NGN",
+            scope: "Responsive onboarding and loan ledger MVP.",
+            estimatedDelivery: "2026-10-30",
+            milestones: [{ id: rid(), title: "MVP Delivery", amount: "₦150,000 (100%)", dueDate: "2026-10-30", completed: true }],
+            terms: "Paid upon milestone completion.",
+            status: "accepted",
+            createdAt: now() - 86400000 * 20
+          },
+          t: now() - 86400000 * 21
         });
       }
 
@@ -1172,12 +1389,93 @@ function seedDemoData() {
     }
   }
 
+  ensurePlatformDefaults();
+
+  if (!db.reviews || db.reviews.length === 0) {
+    const cli = db.users.find(u => u.email === "client@demo.invalid");
+    const apex = (db.agencies || []).find(a => a.id === "ag_apex");
+    if (cli && apex) {
+      const doneProj = (apex.projects || []).find(p => p.status === "Completed") || (apex.projects || [])[0];
+      db.reviews = [{
+        id: "rev_seed_1",
+        agencyId: apex.id,
+        agencyName: apex.name,
+        clientId: cli.id,
+        clientName: cli.name,
+        projectId: doneProj ? doneProj.id : "proj_seed",
+        projectTitle: doneProj ? doneProj.title : "Retail Portal Delivery",
+        rating: 5,
+        comment: "Strong communication across design and engineering, delivered cleanly against our milestone schedule.",
+        status: "approved",
+        t: now() - 86400000 * 3
+      }];
+    }
+  }
+
+  if (!db.verificationRequests || db.verificationRequests.length === 0) {
+    const wri = db.users.find(u => u.username === "sample_write");
+    const lum = (db.agencies || []).find(a => a.id === "ag_lumina");
+    db.verificationRequests = [];
+    if (wri) {
+      db.verificationRequests.push({
+        id: "ver_stu_1",
+        targetType: "student",
+        targetId: wri.id,
+        targetName: wri.name,
+        institution: wri.institution,
+        institutionEmail: "chinedu.write@ui.edu.ng",
+        docNote: "300 Level student ID & departmental enrollment confirmation",
+        status: "pending",
+        adminNotes: "",
+        t: now() - 86400000 * 2
+      });
+    }
+    if (lum) {
+      lum.verifiedStatus = "pending";
+      db.verificationRequests.push({
+        id: "ver_ag_1",
+        targetType: "agency",
+        targetId: lum.id,
+        targetName: lum.name,
+        institution: lum.institution,
+        institutionEmail: "",
+        docNote: "Active 4-member team roster with portfolio deliverables ready for admin review.",
+        status: "pending",
+        adminNotes: "",
+        t: now() - 86400000
+      });
+    }
+  }
+
+  if (!db.reports || db.reports.length === 0) {
+    const cli = db.users.find(u => u.email === "client@demo.invalid");
+    const mkt = db.users.find(u => u.username === "sample_mkt");
+    if (cli && mkt) {
+      db.reports = [{
+        id: "rep_seed_1",
+        reporterId: cli.id,
+        reporterName: cli.name,
+        targetType: "agency",
+        targetId: "ag_lumina",
+        targetName: "Lumina Digital Collective",
+        reason: "Misleading service listing",
+        details: "Sample moderation check: clarifying turnaround timeline displayed on service package.",
+        status: "open",
+        adminNotes: "",
+        actionTaken: "",
+        t: now() - 86400000
+      }];
+    }
+  }
+
   save();
 }
 
 // Automatically seed on boot if missing
 if (!db.agencies || db.agencies.length === 0 || !db.payments || db.payments.length === 0 || !db.opportunities || db.opportunities.length === 0) {
   seedDemoData();
+} else {
+  ensurePlatformDefaults();
 }
 
 /* ===================== Core API Layer ===================== */
@@ -1225,6 +1523,12 @@ const API = {
       collab: [],
       prefs: { inapp: {}, email: {} },
       activity: [],
+      onboarded: false,
+      hasSeenOnboarding: false,
+      profileVisibility: "public",
+      deactivated: false,
+      savedOpps: [],
+      blockedUsers: [],
       created: now()
     };
     log(u, "Created your TeamBud account");
@@ -1264,7 +1568,7 @@ const API = {
     const f = db.fails[email] || { n: 0, until: 0 };
     if (f.until > now()) return { err: "Too many attempts. Wait " + Math.ceil((f.until - now()) / 1000) + " seconds and try again." };
     const u = db.users.find(x => x.email === email);
-    const ok = u && (await hashPw(pw, u.salt)) === u.passHash;
+    const ok = u && ((u.demo && u.passHash === "x" && (pw || "").length >= 8) || (await hashPw(pw, u.salt)) === u.passHash);
     if (!ok) {
       f.n++;
       if (f.n >= 5) { f.until = now() + 60000; f.n = 0; }
@@ -1273,6 +1577,12 @@ const API = {
       return { err: "Email or password is incorrect." };
     }
     if (!u.verified) return { unverified: u };
+    if (u.suspended) return { err: "This account has been suspended by an administrator. Contact support via the Contact page for review." };
+    if (u.deactivated) {
+      u.deactivated = false;
+      log(u, "Reactivated TeamBud account");
+      FLASH = { type: "ok", text: "Welcome back! Your account has been reactivated and restored." };
+    }
     delete db.fails[email];
     db.session = { uid: u.id, exp: now() + (remember ? 86400000 * 14 : 3600000 * 8) };
     save();
@@ -1297,18 +1607,25 @@ const API = {
   },
 
   connect(meId, otherId, note = "") {
-    if (connBetween(meId, otherId)) return;
+    if (!meId || !otherId || meId === otherId) return { err: "Invalid connection request." };
+    if (connBetween(meId, otherId)) return { err: "A connection or pending request already exists." };
     const a = userById(meId), b = userById(otherId);
-    db.conns.push({ id: rid(), from: meId, to: otherId, status: "pending", note: (note || "").trim(), t: now() });
+    if (!a || !b || a.deactivated || b.deactivated) return { err: "Account unavailable." };
+    if ((a.blockedUsers || []).includes(b.id) || (b.blockedUsers || []).includes(a.id)) {
+      return { err: "Cannot connect due to block settings." };
+    }
+    db.conns.push({ id: rid(), from: meId, to: otherId, status: "pending", note: (note || "").trim().slice(0, 300), t: now() });
     const notePreview = note ? ` Note: "${note.slice(0, 60)}..."` : "";
     notify(otherId, "connection_request", a.name + " wants to connect with you." + notePreview);
     log(a, "Sent a connection request to " + b.name);
     save();
+    return { ok: true };
   },
 
-  respond(id, accept) {
+  respond(id, accept, actor = me()) {
     const c = db.conns.find(x => x.id === id);
-    if (!c) return;
+    if (!c) return { err: "Connection request not found." };
+    if (actor && c.to !== actor.id) return { err: "Only the recipient can respond to this request." };
     const a = userById(c.to), b = userById(c.from);
     if (accept) {
       c.status = "accepted";
@@ -1319,16 +1636,165 @@ const API = {
       db.conns = db.conns.filter(x => x.id !== id);
     }
     save();
+    return { ok: true };
   },
 
-  cancel(id) {
+  cancel(id, actor = me()) {
+    const c = db.conns.find(x => x.id === id);
+    if (!c) return { err: "Request not found." };
+    if (actor && c.from !== actor.id) return { err: "Only the sender can cancel this request." };
     db.conns = db.conns.filter(x => x.id !== id);
     save();
+    return { ok: true };
   },
 
-  removeConnection(id) {
+  removeConnection(id, actor = me()) {
+    const c = db.conns.find(x => x.id === id);
+    if (!c) return { err: "Connection not found." };
+    if (actor && c.from !== actor.id && c.to !== actor.id) return { err: "Not authorized to remove this connection." };
     db.conns = db.conns.filter(x => x.id !== id);
     save();
+    return { ok: true };
+  },
+
+  sendDirectMessage(fromId, toId, text) {
+    const fromUser = userById(fromId), toUser = userById(toId);
+    const clean = (text || "").trim();
+    if (!fromUser || !toUser || !clean) return { err: "Message text cannot be empty." };
+    if (fromId === toId) return { err: "Cannot message yourself." };
+    if ((fromUser.blockedUsers || []).includes(toId) || (toUser.blockedUsers || []).includes(fromId)) {
+      return { err: "Messaging unavailable due to block settings." };
+    }
+    const isConnected = (db.conns || []).some(c => c.status === "accepted" && ((c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId)));
+    const sharesAgency = userAgencies(fromId).some(a => isAgencyMember(a, toId));
+    if (!isConnected && !sharesAgency) {
+      return { err: "You can only message accepted connections or teammates in your agencies." };
+    }
+    db.messages = db.messages || [];
+    const msg = { id: rid(), from: fromId, to: toId, text: clean.slice(0, 2000), read: false, t: now() };
+    db.messages.push(msg);
+    notify(toId, "message", `${fromUser.name} sent you a direct message.`);
+    save();
+    return { ok: true, msg };
+  },
+
+  addSkill(userId, skillData, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "You can only modify your own skills." };
+    const u = userById(userId);
+    if (!u) return { err: "Student account not found." };
+    const name = (skillData.name || "").trim();
+    if (!name) return { err: "Enter a skill name." };
+    if ((u.skills || []).some(s => s.name.toLowerCase() === name.toLowerCase())) {
+      return { err: "You already added this skill." };
+    }
+    const sk = {
+      id: rid(),
+      name,
+      level: skillData.level || "Intermediate",
+      pro: skillData.pro !== false,
+      learn: !!skillData.learn,
+      collab: skillData.collab !== false
+    };
+    u.skills = u.skills || [];
+    u.skills.push(sk);
+    u.updated = now();
+    log(u, "Added skill: " + name);
+    save();
+    return { ok: true, skill: sk };
+  },
+
+  removeSkill(userId, skillId, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "You can only remove your own skills." };
+    const u = userById(userId);
+    if (!u) return { err: "Student account not found." };
+    u.skills = (u.skills || []).filter(s => s.id !== skillId);
+    u.updated = now();
+    save();
+    return { ok: true };
+  },
+
+  addPortfolioProject(userId, projData, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "You can only add portfolio projects to your own profile." };
+    const u = userById(userId);
+    if (!u) return { err: "Student account not found." };
+    const title = (projData.title || "").trim();
+    const description = (projData.description || "").trim();
+    if (!title || !description) return { err: "Project title and description are required." };
+    const tools = Array.isArray(projData.tools)
+      ? projData.tools
+      : (projData.tools || "").split(",").map(t => t.trim()).filter(Boolean);
+    const proj = {
+      id: rid(),
+      title,
+      category: projData.category || "Project",
+      date: (projData.date || "").trim() || new Date().getFullYear().toString(),
+      description,
+      tools,
+      url: safeUrl(projData.url || ""),
+      contribution: (projData.contribution || "").trim(),
+      image: safeImg(projData.image || "")
+    };
+    u.portfolio = u.portfolio || [];
+    u.portfolio.unshift(proj);
+    u.updated = now();
+    log(u, "Added portfolio project: " + title);
+    save();
+    return { ok: true, project: proj };
+  },
+
+  removePortfolioProject(userId, projId, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "You can only remove your own portfolio projects." };
+    const u = userById(userId);
+    if (!u) return { err: "Student account not found." };
+    u.portfolio = (u.portfolio || []).filter(p => p.id !== projId);
+    u.updated = now();
+    save();
+    return { ok: true };
+  },
+
+  updateProfileVisibility(userId, visibility, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "You can only update your own privacy settings." };
+    if (!["public", "students_only", "hidden"].includes(visibility)) return { err: "Invalid visibility mode." };
+    const u = userById(userId);
+    if (!u) return { err: "Account not found." };
+    u.profileVisibility = visibility;
+    u.updated = now();
+    log(u, "Updated profile visibility to " + visibility);
+    save();
+    return { ok: true };
+  },
+
+  deactivateAccount(userId, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "Not authorized." };
+    const u = userById(userId);
+    if (!u) return { err: "Account not found." };
+    u.deactivated = true;
+    u.updated = now();
+    log(u, "Deactivated TeamBud account");
+    db.session = null;
+    save();
+    return { ok: true };
+  },
+
+  deleteAccount(userId, actor = me()) {
+    if (!actor || actor.id !== userId) return { err: "Not authorized." };
+    db.conns = (db.conns || []).filter(c => c.from !== userId && c.to !== userId);
+    db.messages = (db.messages || []).filter(m => m.from !== userId && m.to !== userId);
+    db.notifs = (db.notifs || []).filter(n => n.uid !== userId);
+    (db.agencies || []).forEach(a => {
+      const wasMember = (a.members || []).some(m => m.userId === userId);
+      a.members = (a.members || []).filter(m => m.userId !== userId);
+      a.invitations = (a.invitations || []).filter(inv => inv.inviteeUserId !== userId);
+      if (a.ownerId === userId && a.members.length > 0) {
+        a.ownerId = a.members[0].userId;
+        a.members[0].role = "Team Owner";
+      }
+      if (wasMember) syncAgencyStatus(a);
+    });
+    db.users = (db.users || []).filter(u => u.id !== userId);
+    db.session = null;
+    save();
+    return { ok: true };
   },
 
   blockAndReport(reporterId, reportedId, reason, comments) {
@@ -1882,6 +2348,459 @@ const API = {
 
     save();
     return true;
+  },
+
+  ensureAdmin(actor) {
+    if (!actor || actor.role !== "admin") return { err: "Unauthorized: Administrator access required." };
+    return null;
+  },
+
+  requestStudentVerification(userId, instEmail, docNote, actor) {
+    if (!actor || actor.id !== userId || actor.role !== "student") {
+      return { err: "Unauthorized: Only the student account owner may submit verification." };
+    }
+    const cleanEmail = (instEmail || "").trim().toLowerCase();
+    const note = (docNote || "").trim();
+    if (!cleanEmail && !note) return { err: "Provide your institutional email or verification note." };
+    actor.studentVerificationStatus = "pending";
+    actor.institutionEmail = cleanEmail || actor.institutionEmail || "";
+    db.verificationRequests = db.verificationRequests || [];
+    const existing = db.verificationRequests.find(v => v.targetType === "student" && v.targetId === actor.id && v.status === "pending");
+    if (existing) {
+      existing.institutionEmail = cleanEmail;
+      existing.docNote = note;
+      existing.t = now();
+    } else {
+      db.verificationRequests.unshift({
+        id: "ver_" + rid(),
+        targetType: "student",
+        targetId: actor.id,
+        targetName: actor.name,
+        institution: actor.institution,
+        institutionEmail: cleanEmail,
+        docNote: note,
+        status: "pending",
+        adminNotes: "",
+        t: now()
+      });
+    }
+    log(actor, "Submitted student verification request");
+    save();
+    return { ok: true, status: "pending" };
+  },
+
+  requestAgencyVerification(agencyId, docNote, actor) {
+    const a = agencyById(agencyId);
+    if (!a || !actor || !isAgencyOwnerOrManager(a, actor.id)) {
+      return { err: "Unauthorized: Only the agency owner or manager can request verification." };
+    }
+    if (a.status !== "active") {
+      return { err: "Agency must have at least 3 accepted members (Active status) before verification review." };
+    }
+    a.verifiedStatus = "pending";
+    db.verificationRequests = db.verificationRequests || [];
+    const existing = db.verificationRequests.find(v => v.targetType === "agency" && v.targetId === a.id && v.status === "pending");
+    const note = (docNote || "").trim() || "Agency team verification request";
+    if (existing) {
+      existing.docNote = note;
+      existing.t = now();
+    } else {
+      db.verificationRequests.unshift({
+        id: "ver_" + rid(),
+        targetType: "agency",
+        targetId: a.id,
+        targetName: a.name,
+        institution: a.institution,
+        institutionEmail: "",
+        docNote: note,
+        status: "pending",
+        adminNotes: "",
+        t: now()
+      });
+    }
+    notify(a.ownerId, "team_update", `Verification request submitted for "${a.name}". TeamBud administration will review it.`);
+    save();
+    return { ok: true, status: "pending" };
+  },
+
+  toggleSaveAgency(clientId, agencyId, actor) {
+    if (!actor || actor.id !== clientId) return { err: "Log in to bookmark agencies." };
+    const a = agencyById(agencyId);
+    if (!a) return { err: "Agency not found." };
+    actor.savedAgencies = actor.savedAgencies || [];
+    let saved = false;
+    if (actor.savedAgencies.includes(agencyId)) {
+      actor.savedAgencies = actor.savedAgencies.filter(x => x !== agencyId);
+    } else {
+      actor.savedAgencies.push(agencyId);
+      saved = true;
+    }
+    save();
+    return { ok: true, saved };
+  },
+
+  getCompletedProjectsForClient(client) {
+    if (!client) return [];
+    const reqs = (db.requests || []).filter(r => r.uid === client.id && r.status === "active" && r.quotation);
+    const out = [];
+    reqs.forEach(r => {
+      const a = agencyById(r.quotation.agencyId);
+      if (!a) return;
+      const proj = (a.projects || []).find(p => p.title === r.title || p.title.includes(r.title) || r.title.includes(p.title));
+      out.push({ req: r, agency: a, proj, isCompleted: !!(proj && proj.status === "Completed") });
+    });
+    return out;
+  },
+
+  submitAgencyReview(clientId, agencyId, projectId, rating, comment, actor) {
+    if (!actor || actor.id !== clientId || actor.role !== "client") {
+      return { err: "Only authenticated clients can submit agency reviews." };
+    }
+    const a = agencyById(agencyId);
+    if (!a) return { err: "Agency not found." };
+    const completed = this.getCompletedProjectsForClient(actor).find(item => item.agency.id === agencyId && item.isCompleted && (item.proj.id === projectId || item.req.id === projectId));
+    if (!completed) {
+      return { err: "Reviews are only permitted after a project with this agency is marked Completed." };
+    }
+    const rVal = Math.max(1, Math.min(5, Number(rating) || 0));
+    if (!rVal || !(comment || "").trim()) return { err: "Select a rating (1–5) and write your review." };
+    db.reviews = db.reviews || [];
+    const dup = db.reviews.find(rv => rv.clientId === clientId && rv.agencyId === agencyId && rv.projectId === (completed.proj ? completed.proj.id : projectId));
+    if (dup) return { err: "You have already reviewed this completed project." };
+    const rev = {
+      id: "rev_" + rid(),
+      agencyId: a.id,
+      agencyName: a.name,
+      clientId: actor.id,
+      clientName: actor.name,
+      projectId: completed.proj ? completed.proj.id : projectId,
+      projectTitle: completed.proj ? completed.proj.title : completed.req.title,
+      rating: rVal,
+      comment: comment.trim().slice(0, 800),
+      status: "approved",
+      t: now()
+    };
+    db.reviews.unshift(rev);
+    notify(a.ownerId, "project_status", `${actor.name} posted a ${rVal}-star review for "${rev.projectTitle}".`);
+    save();
+    return { ok: true, review: rev };
+  },
+
+  submitReport(reporterId, targetType, targetId, reason, details, alsoBlock) {
+    const reporter = userById(reporterId);
+    if (!reporter) return { err: "Log in to submit a report." };
+    const tType = targetType === "agency" ? "agency" : "student";
+    let targetName = "Unknown";
+    if (tType === "agency") {
+      const a = agencyById(targetId);
+      if (!a) return { err: "Reported agency not found." };
+      targetName = a.name;
+    } else {
+      const uTarget = userById(targetId);
+      if (!uTarget) return { err: "Reported user not found." };
+      targetName = uTarget.name;
+      if (alsoBlock) {
+        this.blockAndReport(reporterId, targetId, reason, details);
+        const latest = db.reports[db.reports.length - 1];
+        if (latest) {
+          latest.reporterName = reporter.name;
+          latest.targetType = "student";
+          latest.targetId = targetId;
+          latest.targetName = targetName;
+          latest.details = (details || "").trim();
+          latest.status = "open";
+          latest.adminNotes = "";
+          latest.actionTaken = "";
+          save();
+        }
+        return { ok: true, blocked: true };
+      }
+    }
+    db.reports = db.reports || [];
+    db.reports.unshift({
+      id: "rep_" + rid(),
+      reporterId,
+      reporterName: reporter.name,
+      targetType: tType,
+      targetId,
+      targetName,
+      reason: reason || "Other safety concern",
+      details: (details || "").trim(),
+      status: "open",
+      adminNotes: "",
+      actionTaken: "",
+      t: now()
+    });
+    save();
+    return { ok: true };
+  },
+
+  submitContactInquiry(data) {
+    const name = (data.name || "").trim();
+    const email = (data.email || "").trim();
+    const subject = (data.subject || "").trim();
+    const message = (data.message || "").trim();
+    if (!name || !validEmail(email) || !subject || !message) {
+      return { err: "Complete all required fields with a valid email address." };
+    }
+    db.contactMessages = db.contactMessages || [];
+    const item = {
+      id: "msg_" + rid(),
+      name,
+      email,
+      subject,
+      message,
+      status: "open",
+      t: now()
+    };
+    db.contactMessages.unshift(item);
+    save();
+    return { ok: true, item };
+  },
+
+  adminGetStats(actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const allUsers = db.users || [];
+    const stuList = allUsers.filter(u => u.role === "student");
+    const cliList = allUsers.filter(u => u.role === "client");
+    const agList = db.agencies || [];
+    const allProjs = agList.flatMap(a => a.projects || []);
+    const activeReqs = (db.requests || []).filter(r => r.status === "active");
+    const completedProjs = allProjs.filter(p => p.status === "Completed").length;
+    const activeProjects = Math.max(allProjs.filter(p => p.status !== "Completed" && p.status !== "Cancelled").length, activeReqs.length - completedProjs);
+    const openReports = (db.reports || []).filter(r => r.status !== "resolved" && r.status !== "dismissed").length;
+    const pendingVerifs = (db.verificationRequests || []).filter(v => v.status === "pending").length;
+    return {
+      totalStudents: stuList.length,
+      verifiedStudents: stuList.filter(s => s.studentVerificationStatus === "verified").length,
+      emailVerifiedStudents: stuList.filter(s => !!s.verified).length,
+      totalAgencies: agList.length,
+      activeAgencies: agList.filter(a => a.status === "active" && !a.suspended).length,
+      verifiedAgencies: agList.filter(a => a.verifiedStatus === "verified" && !a.suspended).length,
+      formingAgencies: agList.filter(a => a.status === "forming" || a.status === "needs_members").length,
+      registeredClients: cliList.length,
+      activeProjects: Math.max(0, activeProjects),
+      completedProjects: completedProjs,
+      reportedAccounts: (db.reports || []).length,
+      openReports,
+      pendingVerifications: pendingVerifs
+    };
+  },
+
+  adminReviewStudentVerif(studentId, decision, note, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const s = userById(studentId);
+    if (!s || s.role !== "student") return { err: "Student account not found." };
+    const status = decision === "verified" ? "verified" : "rejected";
+    s.studentVerificationStatus = status;
+    (db.verificationRequests || []).forEach(v => {
+      if (v.targetType === "student" && v.targetId === s.id && v.status === "pending") {
+        v.status = status === "verified" ? "approved" : "rejected";
+        v.adminNotes = (note || "").trim();
+        v.reviewedAt = now();
+      }
+    });
+    notify(s.id, "team_update", status === "verified"
+      ? "Your Student Verification has been approved by TeamBud Administration."
+      : `Your Student Verification request was not approved${note ? ": " + note : "."}`);
+    log(actor, `${status === "verified" ? "Approved" : "Rejected"} student verification for ${s.name}`);
+    save();
+    return { ok: true, status };
+  },
+
+  adminSetUserSuspension(userId, suspend, reason, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const uTarget = userById(userId);
+    if (!uTarget || uTarget.role === "admin") return { err: "Target account cannot be modified." };
+    uTarget.suspended = !!suspend;
+    uTarget.suspensionReason = suspend ? ((reason || "").trim() || "Suspended following moderation review.") : "";
+    if (!suspend) {
+      log(uTarget, "Account restored by administrator");
+      notify(uTarget.id, "team_update", "Your TeamBud account has been restored by an administrator.");
+    }
+    save();
+    return { ok: true, suspended: uTarget.suspended };
+  },
+
+  adminReviewAgencyVerif(agencyId, decision, note, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const a = agencyById(agencyId);
+    if (!a) return { err: "Agency not found." };
+    const status = decision === "verified" ? "verified" : "rejected";
+    a.verifiedStatus = status;
+    (db.verificationRequests || []).forEach(v => {
+      if (v.targetType === "agency" && v.targetId === a.id && v.status === "pending") {
+        v.status = status === "verified" ? "approved" : "rejected";
+        v.adminNotes = (note || "").trim();
+        v.reviewedAt = now();
+      }
+    });
+    notify(a.ownerId, "team_update", status === "verified"
+      ? `Agency "${a.name}" has been marked Agency Verified by TeamBud Administration.`
+      : `Verification request for "${a.name}" was declined${note ? ": " + note : "."}`);
+    save();
+    return { ok: true, status };
+  },
+
+  adminSetAgencySuspension(agencyId, suspend, reason, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const a = agencyById(agencyId);
+    if (!a) return { err: "Agency not found." };
+    a.suspended = !!suspend;
+    a.suspensionReason = suspend ? ((reason || "").trim() || "Agency suspended following policy review.") : "";
+    notify(a.ownerId, "team_update", suspend
+      ? `Agency "${a.name}" has been suspended from public listings. ${a.suspensionReason}`
+      : `Agency "${a.name}" has been restored by TeamBud Administration.`);
+    save();
+    return { ok: true, suspended: a.suspended };
+  },
+
+  adminSaveCategory(oldName, newName, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const clean = (newName || "").trim();
+    if (!clean) return { err: "Category name cannot be empty." };
+    db.categories = getCategories().slice();
+    if (oldName) {
+      const idx = db.categories.indexOf(oldName);
+      if (idx === -1) return { err: "Original category not found." };
+      if (db.categories.some((c, i) => i !== idx && c.toLowerCase() === clean.toLowerCase())) {
+        return { err: "Another category with this name already exists." };
+      }
+      db.categories[idx] = clean;
+    } else {
+      if (db.categories.some(c => c.toLowerCase() === clean.toLowerCase())) {
+        return { err: "Category already exists." };
+      }
+      db.categories.push(clean);
+    }
+    save();
+    return { ok: true, categories: db.categories };
+  },
+
+  adminDeleteCategory(name, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    db.categories = getCategories().filter(c => c !== name);
+    if (!db.categories.length) db.categories = ["Other Professional Services"];
+    save();
+    return { ok: true };
+  },
+
+  adminSaveOpportunity(oppData, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    db.opportunities = db.opportunities || [];
+    if (oppData.id) {
+      const opp = db.opportunities.find(o => o.id === oppData.id);
+      if (!opp) return { err: "Opportunity not found." };
+      Object.assign(opp, {
+        title: (oppData.title || opp.title).trim(),
+        organisation: (oppData.organisation || opp.organisation).trim(),
+        category: oppData.category || opp.category,
+        description: (oppData.description || opp.description).trim(),
+        eligibility: (oppData.eligibility || opp.eligibility).trim(),
+        deadline: oppData.deadline || opp.deadline,
+        rewardOrValue: (oppData.rewardOrValue || "").trim(),
+        verificationStatus: oppData.verificationStatus || opp.verificationStatus
+      });
+      save();
+      return { ok: true, opp };
+    }
+    const created = {
+      id: "opp_" + rid(),
+      title: (oppData.title || "").trim(),
+      organisation: (oppData.organisation || "").trim(),
+      category: oppData.category || "Client Projects",
+      description: (oppData.description || "").trim(),
+      eligibility: (oppData.eligibility || "").trim(),
+      deadline: oppData.deadline || "",
+      applicationLink: safeUrl(oppData.applicationLink || "") || "in-app",
+      allowInAppApply: true,
+      rewardOrValue: (oppData.rewardOrValue || "").trim(),
+      location: (oppData.location || "Nigeria").trim(),
+      verificationStatus: oppData.verificationStatus === "community" ? "community" : "verified",
+      submittedBy: actor.id,
+      postedAt: now(),
+      applications: []
+    };
+    db.opportunities.unshift(created);
+    save();
+    return { ok: true, opp: created };
+  },
+
+  adminDeleteOpportunity(oppId, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    db.opportunities = (db.opportunities || []).filter(o => o.id !== oppId);
+    save();
+    return { ok: true };
+  },
+
+  adminUpdateReport(reportId, status, adminNotes, actionTaken, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const rep = (db.reports || []).find(r => r.id === reportId);
+    if (!rep) return { err: "Report not found." };
+    rep.status = status || rep.status;
+    rep.adminNotes = (adminNotes || "").trim();
+    rep.actionTaken = (actionTaken || "").trim();
+    rep.reviewedBy = actor.name;
+    rep.reviewedAt = now();
+    save();
+    return { ok: true, report: rep };
+  },
+
+  adminModerateReview(reviewId, status, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    if (status === "deleted") {
+      db.reviews = (db.reviews || []).filter(r => r.id !== reviewId);
+    } else {
+      const rv = (db.reviews || []).find(r => r.id === reviewId);
+      if (!rv) return { err: "Review not found." };
+      rv.status = status;
+    }
+    save();
+    return { ok: true };
+  },
+
+  adminResolveContact(contactId, status, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    const msg = (db.contactMessages || []).find(c => c.id === contactId);
+    if (!msg) return { err: "Inquiry not found." };
+    msg.status = status || "resolved";
+    save();
+    return { ok: true };
+  },
+
+  adminUpdateSettings(patch, actor) {
+    const deny = this.ensureAdmin(actor);
+    if (deny) return deny;
+    db.platformSettings = db.platformSettings || DEFAULT_PLATFORM_SETTINGS();
+    Object.assign(db.platformSettings, {
+      platformName: (patch.platformName || "TeamBud").trim(),
+      tagline: (patch.tagline || "Find Your People. Build Your Future.").trim(),
+      brandLogoUrl: safeImg(patch.brandLogoUrl || "") || "",
+      supportEmail: (patch.supportEmail || "").trim(),
+      announcement: (patch.announcement || "").trim(),
+      announcementActive: !!patch.announcementActive,
+      paystackMode: patch.paystackMode === "live" ? "live" : "test",
+      emailTemplates: {
+        welcomeSubject: (patch.welcomeSubject || "Welcome to TeamBud").trim(),
+        welcomeBody: (patch.welcomeBody || "").trim(),
+        verificationSubject: (patch.verificationSubject || "TeamBud Verification Status Update").trim(),
+        verificationBody: (patch.verificationBody || "").trim()
+      }
+    });
+    save();
+    return { ok: true, settings: db.platformSettings };
   }
 };
 
@@ -1912,7 +2831,8 @@ function rel(t) {
 }
 
 const initials = n => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
-const safeImg = s => typeof s === "string" && (/^data:image\/(jpeg|png|webp|svg\+xml);base64,/.test(s) || /^[a-zA-Z0-9_\-\.\/]+\.(jpg|jpeg|png|webp|svg)$/i.test(s)) ? s : "";
+const safeImg = s => typeof s === "string" && (/^data:image\/(jpeg|png|webp|svg\+xml);base64,/.test(s) || /^[a-zA-Z0-9_\-\.\/]+\.(jpg|jpeg|png|webp|svg)$/i.test(s) || /^https?:\/\//i.test(s)) ? s : "";
+const safeUrl = s => typeof s === "string" && /^https?:\/\//i.test(s.trim()) ? s.trim() : "";
 const avatar = (u, lg) => `<div class="av${lg ? " lg" : ""}">${u && safeImg(u.photo) ? `<img src="${safeImg(u.photo)}" alt="">` : esc(initials(u ? u.name : "?"))}</div>`;
 const agencyLogo = (a, lg) => `<div class="pub-logo" style="${lg ? "width:88px;height:88px;font-size:2rem" : "width:48px;height:48px;font-size:1.15rem;border-radius:12px;margin-bottom:0"}">${a && a.logo ? `<img src="${safeImg(a.logo)}" alt="">` : esc(initials(a ? a.name : "AG"))}</div>`;
 const firstName = u => (u.name || "").split(/\s+/)[0];
@@ -1967,7 +2887,64 @@ const flash = () => {
   FLASH = null;
   return f ? `<div class="alert ${f.type}" role="status">${esc(f.text)}</div>` : "";
 };
-const protoBar = () => Store.persistent ? "" : `<div class="proto">Prototype mode: data is stored in memory and resets when page refreshes.</div>`;
+const protoBar = () => {
+  const s = (db && db.platformSettings) || DEFAULT_PLATFORM_SETTINGS();
+  const memBar = Store.persistent ? "" : `<div class="proto">Prototype mode: data is stored in memory and resets when page refreshes.</div>`;
+  const annBar = (s.announcementActive && s.announcement)
+    ? `<div style="background:var(--forest);color:#fff;padding:10px 18px;text-align:center;font-size:.88rem;border-bottom:2px solid var(--lime)"><strong>📢 Announcement:</strong> ${esc(s.announcement)}</div>`
+    : "";
+  return memBar + annBar;
+};
+
+function publicHeader(u, activePath = "") {
+  const ps = (db && db.platformSettings) || DEFAULT_PLATFORM_SETTINGS();
+  const brandName = ps.platformName || "TeamBud";
+  const logoSrc = safeImg(ps.brandLogoUrl) || window.__ICON;
+  const portalLink = !u
+    ? `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`
+    : (u.role === "admin"
+        ? `<a class="btn btn-primary btn-sm" href="#/admin">Admin Dashboard</a>`
+        : (u.role === "client"
+            ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>`
+            : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`));
+  return `
+    <header class="row" style="margin-bottom:28px;flex-wrap:wrap;gap:12px">
+      <a class="brand" href="${SITE_URL}"><img src="${logoSrc}" alt=""><span class="word">${brandName === "TeamBud" ? "Team<b>Bud</b>" : esc(brandName)}</span></a>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <a class="link" href="${SITE_URL}" style="text-decoration:none;font-weight:600;color:var(--forest)">Home</a>
+        <a class="link" href="#/talent" style="text-decoration:none;font-weight:${activePath === "talent" ? "800;color:var(--emerald)" : "600;color:var(--forest)"}">Talent Hub</a>
+        <a class="link" href="#/marketplace" style="text-decoration:none;font-weight:${activePath === "marketplace" ? "800;color:var(--emerald)" : "600;color:var(--forest)"}">Marketplace</a>
+        <a class="link" href="#/opportunities" style="text-decoration:none;font-weight:${activePath === "opportunities" ? "800;color:var(--emerald)" : "600;color:var(--forest)"}">Opportunities</a>
+        <a class="link" href="#/search" style="text-decoration:none;font-weight:${activePath === "search" ? "800;color:var(--emerald)" : "600;color:var(--forest)"}">Search</a>
+        <a class="link" href="#/help" style="text-decoration:none;font-weight:${activePath === "help" ? "800;color:var(--emerald)" : "600;color:var(--forest)"}">Help</a>
+        ${portalLink}
+      </div>
+    </header>
+  `;
+}
+
+function appFooter(u) {
+  const ps = (db && db.platformSettings) || DEFAULT_PLATFORM_SETTINGS();
+  return `
+    <footer style="max-width:1160px;margin:48px auto 0;padding:24px 20px 36px;border-top:1px solid var(--line);font-size:.86rem;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <strong style="color:var(--forest)">${esc(ps.platformName || "TeamBud")}</strong> · ${esc(ps.tagline || "Find Your People. Build Your Future.")}
+        ${ps.supportEmail ? `<div style="margin-top:4px">Support: <a href="mailto:${esc(ps.supportEmail)}">${esc(ps.supportEmail)}</a></div>` : ""}
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+        <a href="#/search">Global Search</a>
+        <a href="#/help">Help Centre</a>
+        <a href="#/contact">Contact</a>
+        <a href="#/privacy">Privacy Policy</a>
+        <a href="#/terms">Terms of Use</a>
+        <a href="#/community-guidelines">Community Guidelines</a>
+        <a href="#/agency-guidelines">Agency Agreements</a>
+        <a href="#/payment-policy">Payment Policy</a>
+        ${u && u.role === "admin" ? `<a href="#/admin" style="font-weight:700;color:var(--emerald)">Admin Dashboard</a>` : ""}
+      </div>
+    </footer>
+  `;
+}
 
 function showModal(contentHtml) {
   let c = $("#modal-container");
@@ -2030,6 +3007,8 @@ function shell(active, content) {
         <button class="btn btn-quiet btn-sm" data-act="menu">Close</button>
       </div>
       ${NAV.map(n => `<a href="#/app/${n[0]}" class="${active === n[0] ? "on" : ""}">${icon(n[2])}${n[1]}</a>`).join("")}
+      <a href="#/search">${icon("M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z")}Global Search</a>
+      <a href="#/help">${icon("M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z")}Help Centre</a>
       <button class="l" data-act="logout">${icon("M9 4H5v16h4M16 8l4 4-4 4M20 12H9")}Log out</button>
     </div>`;
 
@@ -2037,6 +3016,13 @@ function shell(active, content) {
     <aside class="side">
       <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
       <nav aria-label="Dashboard">${NAV.map(n => link(n)).join("")}</nav>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.78rem;padding:8px 4px;border-top:1px solid var(--line);margin-top:8px">
+        <a href="#/search" style="color:var(--muted)">Search</a>
+        <a href="#/help" style="color:var(--muted)">Help</a>
+        <a href="#/contact" style="color:var(--muted)">Contact</a>
+        <a href="#/privacy" style="color:var(--muted)">Privacy</a>
+        <a href="#/terms" style="color:var(--muted)">Terms</a>
+      </div>
       <div class="usercard">
         ${avatar(u)}
         <div style="min-width:0">
@@ -2050,6 +3036,7 @@ function shell(active, content) {
       <header class="topbar">
         <a class="brand" href="#/app/overview"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
         <div style="display:flex;align-items:center;gap:8px">
+          <a class="btn btn-quiet btn-sm" href="#/search" aria-label="Search">Search</a>
           <a class="btn btn-primary btn-sm" href="#/create-agency" style="padding:0 14px">+ Create Agency</a>
           <button class="btn btn-quiet" data-act="menu" aria-label="Open menu">${icon("M4 7h16M4 12h16M4 17h16")}</button>
         </div>
@@ -2075,7 +3062,7 @@ function authLayout(inner) {
           <li>Form student agencies of 3 to 10 members to serve real clients.</li>
         </ul>
       </div>
-      <small>Free platform. Build, collaborate, and launch independent agency brands.</small>
+      <small>Free platform. Build, collaborate, and launch independent agency brands. · <a href="#/help" style="color:#fff">Help</a> · <a href="#/privacy" style="color:#fff">Privacy</a> · <a href="#/terms" style="color:#fff">Terms</a></small>
     </aside>
     <main class="auth-main">
       <div class="auth-card">
@@ -2112,7 +3099,8 @@ function viewLogin() {
       <strong>Quick Demo Access:</strong><br>
       Founder: <code>mr_clarity@demo.invalid</code> / password (any 8 chars)<br>
       Student: <code>sample_dev@demo.invalid</code> / password (any 8 chars)<br>
-      Client: <code>client@demo.invalid</code> / password (any 8 chars)
+      Client: <code>client@demo.invalid</code> / password (any 8 chars)<br>
+      Admin: <code>admin@teambud.org</code> / password (any 8 chars)
     </div>
     <p class="alt">New to TeamBud? <a href="#/register/student">Create a student account</a> or <a href="#/register/client">register as a client</a>.</p>
   `);
@@ -2295,8 +3283,8 @@ function recommendComplementary(u) {
       .map(c => c.from === u.id ? c.to : c.from)
   );
 
-  return students()
-    .filter(o => o.id !== u.id && !existingConns.has(o.id) && !(u.blockedUsers || []).includes(o.id))
+  return students(u)
+    .filter(o => o.id !== u.id && !existingConns.has(o.id) && !(u.blockedUsers || []).includes(o.id) && !(o.blockedUsers || []).includes(u.id))
     .map(o => {
       const otherSkills = (o.skills || []).map(s => s.name.toLowerCase());
       const otherCat = (o.category || o.department || "").toLowerCase();
@@ -2360,7 +3348,7 @@ function pageOverview(u) {
             ✨ Complete Your Guided Profile Setup (${c.pct}% Complete)
           </strong>
           <p style="font-size:.88rem;color:var(--forest);margin:0;max-width:680px">
-            Showcase your skills, experience level, and work samples so student agencies and commercial clients can discover your abilities.
+            Your profile is still taking shape. Add your skills and a few work samples to help others discover what you can do.
           </p>
         </div>
         <div style="display:flex;gap:10px">
@@ -2597,10 +3585,11 @@ function pageOverview(u) {
 let activeTalentCategory = "all";
 
 function pageTalentHub(u) {
-  const allDepts = [...new Set(students().map(s => s.department).filter(Boolean))].sort();
-  const allInsts = [...new Set(students().map(s => s.institution).filter(Boolean))].sort();
-  const allLocs = [...new Set(students().map(s => loc(s)).filter(Boolean))].sort();
-  const allSkills = [...new Set(students().flatMap(s => (s.skills || []).map(sk => sk.name)).filter(Boolean))].sort();
+  const dirList = students(u);
+  const allDepts = [...new Set(dirList.map(s => s.department).filter(Boolean))].sort();
+  const allInsts = [...new Set(dirList.map(s => s.institution).filter(Boolean))].sort();
+  const allLocs = [...new Set(dirList.map(s => loc(s)).filter(Boolean))].sort();
+  const allSkills = [...new Set(dirList.flatMap(s => (s.skills || []).map(sk => sk.name)).filter(Boolean))].sort();
 
   return `
     <div class="talent-hero">
@@ -2735,7 +3724,8 @@ function talentHubResults() {
   const onlyFreelance = $("#t-freelance") ? $("#t-freelance").checked : false;
   const sortBy = ($("#t-sort") ? $("#t-sort").value : "recent");
 
-  let list = students();
+  const curU = me();
+  let list = students(curU).filter(s => !curU || (!(curU.blockedUsers || []).includes(s.id) && !(s.blockedUsers || []).includes(curU.id)));
 
   // Category filter
   if (activeTalentCategory && activeTalentCategory !== "all") {
@@ -2794,7 +3784,7 @@ function talentHubResults() {
     container.innerHTML = `
       <div class="empty" style="padding:48px 24px;text-align:center">
         <h3 style="font-size:1.2rem;color:var(--forest);margin-bottom:6px">No talent profiles matched your filters</h3>
-        <p style="color:var(--muted);margin-bottom:16px">Try widening your search terms or clearing one of your filters.</p>
+        <p style="color:var(--muted);margin-bottom:16px">We couldn't find anyone matching those filters. Try changing your search or exploring another skill category.</p>
         <button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('#dfilters input, #dfilters select, #talent-directory input, #talent-directory select').forEach(e => { if(e.type==='checkbox') e.checked=false; else e.value=''; }); talentHubResults();">Clear all filters</button>
       </div>
     `;
@@ -2805,12 +3795,13 @@ function talentHubResults() {
   container.innerHTML = `
     <div style="margin-bottom:14px;font-size:.88rem;color:var(--muted)">Showing <strong>${list.length}</strong> talented student${list.length === 1 ? "" : "s"} across Nigeria</div>
     <div class="talent-grid">
-      ${list.map(s => renderTalentCard(s, u)).join("")}
+      ${list.map(s => renderTalentCard(toPublicStudentProfile(s), u)).join("")}
     </div>
   `;
 }
 
 function renderTalentCard(s, u) {
+  s = toPublicStudentProfile(s);
   const availMap = {
     now: { cls: "active", label: "● Available now" },
     part: { cls: "forming", label: "◐ Part-time" },
@@ -2872,6 +3863,10 @@ let obStep = 1;
 
 function pageOnboarding(u) {
   ensureStudentDefaults(u);
+  if (!u.hasSeenOnboarding) {
+    u.hasSeenOnboarding = true;
+    save();
+  }
   const c = completion(u);
   const commonSkills = [
     "UI/UX Design", "Figma", "Web Development", "React",
@@ -3110,7 +4105,7 @@ function pageOnboarding(u) {
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)">
                 <button type="button" class="btn btn-quiet" data-act="set-ob-step" data-step="4">← Previous</button>
                 <div style="display:flex;gap:10px">
-                  <button type="submit" class="btn btn-ghost">Skip & View Summary</button>
+                  <button type="button" class="btn btn-ghost" data-act="skip-ob-step5">Skip & View Summary</button>
                   <button class="btn btn-primary" type="submit">Save & Review Profile →</button>
                 </div>
               </div>
@@ -3166,20 +4161,57 @@ function pageOnboarding(u) {
 }
 
 function viewStudentTalentProfile(username, u) {
-  const s = db.users.find(x => x.username === username && x.role === "student");
-  if (!s) {
+  const rawS = db.users.find(x => x.username === username && x.role === "student");
+  if (!rawS || rawS.deactivated) {
     return `
       ${protoBar()}
       <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
         <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Student Profile Not Found</h2>
-        <p style="color:var(--muted);margin-bottom:20px">The student username <strong>@${esc(username)}</strong> could not be located in our directory.</p>
+        <p style="color:var(--muted);margin-bottom:20px">The student profile <strong>@${esc(username)}</strong> is unavailable or could not be located.</p>
         <a class="btn btn-primary" href="#/talent">← Return to Talent Hub</a>
       </div>
     `;
   }
 
-  ensureStudentDefaults(s);
-  const isOwner = u && u.id === s.id;
+  if (u && ((u.blockedUsers || []).includes(rawS.id) || (rawS.blockedUsers || []).includes(u.id))) {
+    return `
+      ${protoBar()}
+      <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
+        <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Profile Unavailable</h2>
+        <p style="color:var(--muted);margin-bottom:20px">This student profile is restricted due to your block preferences.</p>
+        <a class="btn btn-primary" href="#/talent">← Return to Talent Hub</a>
+      </div>
+    `;
+  }
+
+  ensureStudentDefaults(rawS);
+  const isOwner = u && u.id === rawS.id;
+  const vis = rawS.profileVisibility || "public";
+  if (!isOwner && vis === "hidden") {
+    return `
+      ${protoBar()}
+      <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
+        <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Private Talent Profile</h2>
+        <p style="color:var(--muted);margin-bottom:20px">This student has currently hidden their talent profile from public discovery.</p>
+        <a class="btn btn-primary" href="#/talent">← Return to Talent Hub</a>
+      </div>
+    `;
+  }
+  if (!isOwner && vis === "students_only" && (!u || u.role !== "student")) {
+    return `
+      ${protoBar()}
+      <div style="max-width:800px;margin:60px auto;padding:32px;text-align:center" class="card">
+        <h2 style="font-size:1.6rem;color:var(--forest);margin-bottom:12px">Student-Only Profile</h2>
+        <p style="color:var(--muted);margin-bottom:20px">Sign in with a verified TeamBud student account to view this profile.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-primary" href="#/login">Log In</a>
+          <a class="btn btn-ghost" href="#/talent">← Return to Talent Hub</a>
+        </div>
+      </div>
+    `;
+  }
+
+  const s = toPublicStudentProfile(rawS);
   const isClient = u && u.role === "client";
 
   const availMap = {
@@ -3214,7 +4246,7 @@ function viewStudentTalentProfile(username, u) {
           <div style="flex:1;min-width:280px">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <h1 style="font-size:2.1rem;font-weight:800;color:var(--forest);margin:0;letter-spacing:-0.02em">${esc(s.name)}</h1>
-              <span class="badge verified">✓ Verified Student</span>
+              ${studentVerificationBadge(s)}
               ${s.demo ? `<span class="badge role">Demo</span>` : ""}
             </div>
             <div style="font-size:1.15rem;font-weight:600;color:var(--emerald);margin:6px 0 10px">${esc(s.headline || (s.department + " Student"))}</div>
@@ -3336,7 +4368,7 @@ function viewStudentTalentProfile(username, u) {
                 ${s.portfolio.map(p => `
                   <div class="talent-portfolio-item">
                     <div class="portfolio-img-box">
-                      ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.title || p.label)}">` : `
+                      ${safeImg(p.image) ? `<img src="${safeImg(p.image)}" alt="${esc(p.title || p.label)}">` : `
                         <div style="text-align:center;padding:20px">
                           <div style="font-size:2rem;margin-bottom:4px">📁</div>
                           <span style="font-weight:700;color:var(--forest);font-size:.9rem">${esc(p.title || p.label || "Project")}</span>
@@ -3366,7 +4398,7 @@ function viewStudentTalentProfile(username, u) {
                       </div>
 
                       <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
-                        ${p.url ? `<a class="btn btn-ghost btn-sm" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">View Project ↗</a>` : ""}
+                        ${safeUrl(p.url) ? `<a class="btn btn-ghost btn-sm" href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">View Project ↗</a>` : ""}
                         ${isOwner ? `<button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}">Remove</button>` : ""}
                       </div>
                     </div>
@@ -3375,7 +4407,7 @@ function viewStudentTalentProfile(username, u) {
               </div>
             ` : `
               <div class="empty">
-                <p>No showcase projects uploaded yet.</p>
+                <p>You haven't added any projects yet. Start with something you've worked on, even if it was a personal project.</p>
                 ${isOwner ? `<button class="btn btn-primary btn-sm" data-act="modal-add-proj" style="margin-top:10px">+ Add your first project</button>` : ""}
               </div>
             `}
@@ -3469,11 +4501,11 @@ function viewStudentTalentProfile(username, u) {
 
             <strong style="display:block;font-size:.82rem;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Verified Public Links</strong>
             <div style="display:flex;flex-direction:column;gap:8px">
-              ${(s.socialLinks && s.socialLinks.github) ? `<a href="${esc(s.socialLinks.github)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🌐 GitHub ↗</a>` : ""}
-              ${(s.socialLinks && s.socialLinks.behance) ? `<a href="${esc(s.socialLinks.behance)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🎨 Behance ↗</a>` : ""}
-              ${(s.socialLinks && s.socialLinks.linkedin) ? `<a href="${esc(s.socialLinks.linkedin)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">💼 LinkedIn ↗</a>` : ""}
-              ${(s.socialLinks && s.socialLinks.twitter) ? `<a href="${esc(s.socialLinks.twitter)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🐦 X / Twitter ↗</a>` : ""}
-              ${(s.socialLinks && s.socialLinks.website) ? `<a href="${esc(s.socialLinks.website)}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🔗 Website ↗</a>` : ""}
+              ${(s.socialLinks && safeUrl(s.socialLinks.github)) ? `<a href="${esc(safeUrl(s.socialLinks.github))}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🌐 GitHub ↗</a>` : ""}
+              ${(s.socialLinks && safeUrl(s.socialLinks.behance)) ? `<a href="${esc(safeUrl(s.socialLinks.behance))}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🎨 Behance ↗</a>` : ""}
+              ${(s.socialLinks && safeUrl(s.socialLinks.linkedin)) ? `<a href="${esc(safeUrl(s.socialLinks.linkedin))}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">💼 LinkedIn ↗</a>` : ""}
+              ${(s.socialLinks && safeUrl(s.socialLinks.twitter)) ? `<a href="${esc(safeUrl(s.socialLinks.twitter))}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🐦 X / Twitter ↗</a>` : ""}
+              ${(s.socialLinks && safeUrl(s.socialLinks.website)) ? `<a href="${esc(safeUrl(s.socialLinks.website))}" target="_blank" rel="noopener noreferrer" style="font-size:.9rem;color:var(--forest);display:flex;align-items:center;gap:8px;text-decoration:none">🔗 Website ↗</a>` : ""}
               ${(!s.socialLinks || Object.keys(s.socialLinks).length === 0) ? `<div style="font-size:.84rem;color:var(--muted)">Connect to view shared external links.</div>` : ""}
             </div>
           </div>
@@ -3530,7 +4562,7 @@ function pageDiscover(u) {
       </div>
       <div class="field" style="grid-column:span 2">
         <label for="fcat">Business category</label>
-        <select id="fcat" data-live="disc">${opts(CATS, "", "All categories")}</select>
+        <select id="fcat" data-live="disc">${opts(getCategories(), "", "All categories")}</select>
       </div>
     </div>
     <div id="results" aria-live="polite"></div>
@@ -3549,7 +4581,7 @@ function discoverResults() {
   const av = ($("#favail") ? $("#favail").value : "").trim();
   const cat = ($("#fcat") ? $("#fcat").value : "").trim();
 
-  let list = students().filter(o => o.id !== u.id);
+  let list = students(u).filter(o => o.id !== u.id && !(u.blockedUsers || []).includes(o.id) && !(o.blockedUsers || []).includes(u.id));
   if (q) list = list.filter(o => o.name.toLowerCase().includes(q) || o.username.toLowerCase().includes(q) || (o.bio || "").toLowerCase().includes(q));
   if (sk) list = list.filter(o => (o.skills || []).some(s => s.name.toLowerCase().includes(sk)));
   if (inst) list = list.filter(o => o.institution === inst);
@@ -3559,7 +4591,7 @@ function discoverResults() {
   if (cat) list = list.filter(o => (o.collab || []).includes(cat));
 
   if (!list.length) {
-    container.innerHTML = `<div class="empty">No students found matching your filters. Try clearing a filter or <button class="btn btn-ghost btn-sm" data-act="demo">Load demo profiles</button>.</div>`;
+    container.innerHTML = `<div class="empty">We couldn't find anyone matching those filters. Try changing your search or exploring another skill category. <button class="btn btn-ghost btn-sm" data-act="demo" style="margin-left:8px">Load demo profiles</button></div>`;
     return;
   }
 
@@ -3677,8 +4709,8 @@ function pagePortfolio(u) {
               </div>
 
               <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-                ${p.url ? `<a class="btn btn-ghost btn-sm" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">Live Link ↗</a>` : ""}
-                ${p.repoUrl ? `<a class="btn btn-ghost btn-sm" href="${esc(p.repoUrl)}" target="_blank" rel="noopener noreferrer">Code ↗</a>` : ""}
+                ${safeUrl(p.url) ? `<a class="btn btn-ghost btn-sm" href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener noreferrer" style="flex:1;text-align:center">Live Link ↗</a>` : ""}
+                ${safeUrl(p.repoUrl) ? `<a class="btn btn-ghost btn-sm" href="${esc(safeUrl(p.repoUrl))}" target="_blank" rel="noopener noreferrer">Code ↗</a>` : ""}
                 <button class="btn btn-quiet btn-sm" data-act="rm-portfolio-proj" data-id="${p.id}">Delete</button>
               </div>
             </div>
@@ -3690,7 +4722,7 @@ function pagePortfolio(u) {
         <div style="font-size:3rem;margin-bottom:12px">📁</div>
         <h2>Showcase Your Abilities</h2>
         <p style="max-width:540px;margin:8px auto 20px;color:var(--muted);line-height:1.6">
-          Uploading work samples or linking existing projects helps agency founders discover your talents and invite you to high-value client engagements.
+          You haven't added any projects yet. Start with something you've worked on, even if it was a personal project.
         </p>
         <button class="btn btn-primary" data-act="modal-add-proj">+ Upload First Project</button>
       </div>
@@ -3762,7 +4794,7 @@ function pageConnections(u) {
                   <button class="btn btn-quiet btn-sm" data-act="rm-conn" data-id="${c.id}" title="Remove connection">Remove</button>
                 </span>
               </li>`;
-          }).join("") : `<div class="empty">No connections yet. Connect with students on <a href="#/app/talent">Talent Hub</a> to form agency teams.</div>`}
+          }).join("") : `<div class="empty">You haven't connected with anyone yet. Explore the <a href="#/app/talent">Talent Hub</a> and find people you could build with.</div>`}
         </ul>
       </div>
     ` : ""}
@@ -4005,15 +5037,45 @@ function pageNotifs(u) {
 }
 
 function pageSettings(u) {
+  ensureStudentDefaults(u);
+  const vis = u.profileVisibility || "public";
   return `
     <div class="page-h">
       <div>
-        <h1>Notification Settings</h1>
-        <p>Control what updates you receive in-app.</p>
+        <h1>Privacy, Notifications & Account Settings</h1>
+        <p>Manage who can discover your talent profile, notification preferences, and account status.</p>
       </div>
     </div>
-    <div class="card">
-      <table class="ptable" style="width:100%;border-collapse:collapse">
+
+    <!-- Profile Visibility Controls (Section 15) -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Profile Visibility & Privacy</h2>
+      <p class="c-sub">Control whether your student talent profile appears in public discovery and search results.</p>
+      <form data-form="visibility-settings" novalidate style="margin-top:14px">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+          ${[
+            ["public", "Public Discovery (Recommended)", "Your talent profile (excluding private email, phone, and account data) is visible across Talent Hub and shareable profile links."],
+            ["students_only", "Logged-In Students Only", "Only authenticated student collaborators on TeamBud can view your profile and discover your skills."],
+            ["hidden", "Hidden from Public Discovery", "Hide your profile from Talent Hub search and public directory listings while keeping existing agency memberships."]
+          ].map(([val, title, desc]) => `
+            <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--ivory);border:1px solid var(--line);border-radius:10px;cursor:pointer">
+              <input type="radio" name="profileVisibility" value="${val}" ${vis === val ? "checked" : ""} style="margin-top:3px">
+              <div>
+                <strong style="display:block;color:var(--forest);font-size:.94rem">${esc(title)}</strong>
+                <small style="color:var(--muted);font-size:.84rem">${esc(desc)}</small>
+              </div>
+            </label>
+          `).join("")}
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">Save Privacy Setting</button>
+      </form>
+    </div>
+
+    <!-- Notification Settings -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Notification Preferences</h2>
+      <p class="c-sub">Control what updates you receive in-app.</p>
+      <table class="ptable" style="width:100%;border-collapse:collapse;margin-top:12px">
         <thead>
           <tr style="border-bottom:2px solid var(--line);text-align:left">
             <th style="padding:10px 0">Notification Type</th>
@@ -4038,21 +5100,58 @@ function pageSettings(u) {
         </tbody>
       </table>
     </div>
+
+    <!-- Account Deactivation & Deletion (Section 15) -->
+    <div class="card" style="border-left:4px solid var(--danger)">
+      <h2>Account Lifecycle & Data Rights</h2>
+      <p class="c-sub">Take a break without losing your history, or permanently erase your TeamBud account and data.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+        <button type="button" class="btn btn-ghost btn-sm" data-act="open-deactivate-modal">Deactivate Account</button>
+        <button type="button" class="btn btn-quiet btn-sm" data-act="open-delete-account-modal" style="color:var(--danger)">Delete Account Permanently</button>
+      </div>
+    </div>
   `;
 }
 
 function pageProfile(u) {
   ensureStudentDefaults(u);
+  const visLabels = { public: "Public", students_only: "Students Only", hidden: "Hidden" };
   return `
     <div class="page-h">
       <div>
         <h1>My Talent Profile</h1>
-        <p>Manage your professional student presence and showcase your abilities on TeamBud.</p>
+        <p>Manage your professional student presence and showcase your abilities on TeamBud. Visibility: <strong>${visLabels[u.profileVisibility || "public"]}</strong> (<a href="#/app/settings">Change</a>)</p>
       </div>
       <span class="acts" style="display:flex;gap:8px">
         <button type="button" class="btn btn-ghost btn-sm" data-act="share-profile" data-name="${esc(u.name)}" data-url="${window.location.origin}/#/talent/${esc(u.username)}">📋 SHARE MY PROFILE</button>
         <a class="btn btn-primary btn-sm" href="#/talent/${esc(u.username)}" target="_blank">VIEW MY PUBLIC PROFILE ↗</a>
       </span>
+    </div>
+
+    <!-- Verification Tiers Card -->
+    <div class="card" style="margin-bottom:24px;border-left:4px solid var(--emerald)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="margin-bottom:4px">Verification Status</h2>
+          <p class="c-sub" style="margin:0">Current badge: ${studentVerificationBadge(u)}</p>
+          <p style="font-size:.82rem;color:var(--muted);margin-top:6px">Tiers: Registered → Email Verified → Student Verified. Verification confirms student identity only and does not certify professional competence.</p>
+        </div>
+      </div>
+      ${u.studentVerificationStatus !== "verified" ? `
+        <form data-form="request-student-verif" novalidate style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+          <div class="grid2">
+            <div class="field">
+              <label for="stu-inst-email">Institutional Email (Optional)</label>
+              <input type="email" id="stu-inst-email" name="institutionEmail" class="inp" value="${esc(u.institutionEmail || "")}" placeholder="e.g. name@university.edu.ng">
+            </div>
+            <div class="field">
+              <label for="stu-verif-note">Student ID / Enrollment Note *</label>
+              <input type="text" id="stu-verif-note" name="docNote" class="inp" placeholder="e.g. 300 Level CS ID verified via portal">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-ghost btn-sm">${u.studentVerificationStatus === "pending" ? "Update Pending Request" : "Request Student Verification"}</button>
+        </form>
+      ` : ""}
     </div>
 
     <!-- Core Profile Details -->
@@ -4110,7 +5209,7 @@ function pageProfile(u) {
           <div>
             <label style="font-size:.84rem;font-weight:700;display:block;margin-bottom:6px">Primary Discipline Category</label>
             <select name="category" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
-              ${opts(CATS, u.category)}
+              ${opts(getCategories(), u.category)}
             </select>
           </div>
 
@@ -4161,7 +5260,7 @@ function pageProfile(u) {
           <div class="full">
             <label class="field-label" style="font-weight:700;display:block;margin-bottom:8px">Collaboration Areas</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
-              ${CATS.map(c => `<label class="chk"><input type="checkbox" name="collab" value="${esc(c)}" ${(u.collab || []).includes(c) ? "checked" : ""}> ${esc(c)}</label>`).join("")}
+              ${getCategories().map(c => `<label class="chk"><input type="checkbox" name="collab" value="${esc(c)}" ${(u.collab || []).includes(c) ? "checked" : ""}> ${esc(c)}</label>`).join("")}
             </div>
           </div>
         </div>
@@ -4295,8 +5394,8 @@ function viewAgencyCreate(u) {
 
         <h2 style="margin:28px 0 16px">2. Industry & Service Capabilities</h2>
         <div class="grid2">
-          ${field("industry", "Industry Domain", `<select id="industry" name="industry">${opts(CATS, "", "Select industry domain")}</select>`)}
-          ${field("mainCategory", "Main Service Category", `<select id="mainCategory" name="mainCategory">${opts(CATS, "", "Select primary service")}</select>`)}
+          ${field("industry", "Industry Domain", `<select id="industry" name="industry">${opts(getCategories(), "", "Select industry domain")}</select>`)}
+          ${field("mainCategory", "Main Service Category", `<select id="mainCategory" name="mainCategory">${opts(getCategories(), "", "Select primary service")}</select>`)}
           <div class="full">
             ${field("institution", "Institution Affiliation", inp("institution", "text", `value="${esc(u.institution || "")}" list="inst-list"`), "Your university or polytechnic campus base.")}
           </div>
@@ -4306,7 +5405,7 @@ function viewAgencyCreate(u) {
           <div class="full">
             <label class="field-label" style="font-weight:700;display:block;margin-bottom:6px">Additional Service Offerings (Select all that apply)</label>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
-              ${CATS.map(c => `<label class="chk"><input type="checkbox" name="additionalServices" value="${esc(c)}"> ${esc(c)}</label>`).join("")}
+              ${getCategories().map(c => `<label class="chk"><input type="checkbox" name="additionalServices" value="${esc(c)}"> ${esc(c)}</label>`).join("")}
             </div>
           </div>
         </div>
@@ -4453,19 +5552,24 @@ function pageMyAgency(u) {
 /* ===================== Section 7: Public Agency Profile ===================== */
 function viewPublicAgency(slug, currentUser) {
   const a = agencyBySlug(slug);
-  if (!a) {
+  if (!a || (a.suspended && !(currentUser && (currentUser.role === "admin" || isAgencyMember(a, currentUser.id))))) {
     return `
       <div style="max-width:800px;margin:60px auto;padding:24px;text-align:center">
-        <h2>Agency Not Found</h2>
-        <p style="margin:12px 0 24px">The requested agency profile "<strong>${esc(slug)}</strong>" does not exist or has been removed.</p>
+        <h2>${a && a.suspended ? "Agency Suspended" : "Agency Not Found"}</h2>
+        <p style="margin:12px 0 24px">${a && a.suspended ? "This agency profile is currently suspended pending administrative review." : `The requested agency profile "${esc(slug)}" does not exist or has been removed.`}</p>
         <a class="btn btn-primary" href="#/marketplace">Browse All Agencies</a>
       </div>`;
   }
 
   const isOwnerOrMgr = currentUser && isAgencyOwnerOrManager(a, currentUser.id);
   const isMember = currentUser && isAgencyMember(a, currentUser.id);
-  const isEligible = a.status === "active";
+  const isEligible = a.status === "active" && !a.suspended;
   const needed = Math.max(0, 3 - (a.members || []).length);
+  const isSavedAgency = !!(currentUser && (currentUser.savedAgencies || []).includes(a.id));
+  const agencyReviews = (db.reviews || []).filter(rv => rv.agencyId === a.id && rv.status === "approved");
+  const canLeaveReview = currentUser && currentUser.role === "client"
+    ? API.getCompletedProjectsForClient(currentUser).find(item => item.agency.id === a.id && item.isCompleted && !(db.reviews || []).some(rv => rv.clientId === currentUser.id && rv.projectId === (item.proj ? item.proj.id : item.req.id)))
+    : null;
 
   return `
     ${protoBar()}
@@ -4481,7 +5585,7 @@ function viewPublicAgency(slug, currentUser) {
         </div>
         <div style="display:flex;gap:10px;align-items:center">
           ${isMember ? `<a class="btn btn-ghost btn-sm" href="#/agency-hub/${a.id}">Team Workspace</a>` : ""}
-          ${currentUser ? (currentUser.role === "client" ? `<a class="btn btn-quiet btn-sm" href="#/client">Client Dashboard</a>` : `<a class="btn btn-quiet btn-sm" href="#/app/overview">Student Dashboard</a>`) : `<a class="btn btn-quiet btn-sm" href="#/login">Log In</a>`}
+          ${currentUser ? (currentUser.role === "admin" ? `<a class="btn btn-ghost btn-sm" href="#/admin">Admin Dashboard</a>` : (currentUser.role === "client" ? `<a class="btn btn-quiet btn-sm" href="#/client">Client Dashboard</a>` : `<a class="btn btn-quiet btn-sm" href="#/app/overview">Student Dashboard</a>`)) : `<a class="btn btn-quiet btn-sm" href="#/login">Log In</a>`}
         </div>
       </header>
 
@@ -4490,13 +5594,13 @@ function viewPublicAgency(slug, currentUser) {
         <div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:14px;padding:18px 22px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <div>
             <strong style="color:#E65100;font-size:1rem;display:block;margin-bottom:4px">
-              ${a.status === "forming" ? "Agency in FORMING Status" : "Agency NEEDS MEMBERS"}
+              ${a.suspended ? "Agency Suspended by Administration" : (a.status === "forming" ? "Agency in FORMING Status" : "Agency NEEDS MEMBERS")}
             </strong>
             <p style="font-size:.9rem;color:#5D4037">
-              This agency currently has <strong>${a.members.length} of 3</strong> required members. TeamBud requires a minimum of 3 accepted members before an agency becomes publicly eligible for commercial client requests.
+              ${a.suspended ? esc(a.suspensionReason || "This agency has been temporarily suspended.") : `This agency currently has <strong>${a.members.length} of 3</strong> required members. TeamBud requires a minimum of 3 accepted members before an agency becomes publicly eligible for commercial client requests.`}
             </p>
           </div>
-          ${isOwnerOrMgr ? `<a class="btn btn-primary btn-sm" href="#/agency-hub/${a.id}/members">Invite ${needed} More Student${needed > 1 ? "s" : ""}</a>` : ""}
+          ${!a.suspended && isOwnerOrMgr ? `<a class="btn btn-primary btn-sm" href="#/agency-hub/${a.id}/members">Invite ${needed} More Student${needed > 1 ? "s" : ""}</a>` : ""}
         </div>
       ` : ""}
 
@@ -4507,9 +5611,7 @@ function viewPublicAgency(slug, currentUser) {
             ${agencyLogo(a, true)}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
               <h1>${esc(a.name)}</h1>
-              <span class="badge ${a.status === "active" ? "active" : "forming"}" style="font-size:.8rem">
-                ${a.status === "active" ? "Verified Agency" : "Forming Agency"}
-              </span>
+              ${agencyVerificationBadge(a)}
             </div>
             <p>${esc(a.shortDesc)}</p>
             <div style="display:flex;gap:16px;align-items:center;margin-top:18px;font-size:.92rem;color:#E5EDE2;flex-wrap:wrap">
@@ -4521,11 +5623,14 @@ function viewPublicAgency(slug, currentUser) {
               <span>•</span>
               <span><strong>Industry:</strong> ${esc(a.industry)}</span>
             </div>
+            <div style="margin-top:8px;font-size:.78rem;color:#CFE3D7">Verification confirms TeamBud identity/standing only and does not certify professional competence.</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px;min-width:220px">
             <button class="btn btn-primary" style="background:var(--lime);color:var(--forest);font-weight:800;border:none" data-act="open-quote-modal" data-agency-id="${a.id}">
               Request a Quotation
             </button>
+            ${currentUser ? `<button class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,0.4)" data-act="toggle-save-agency" data-agency-id="${a.id}">${isSavedAgency ? "★ Saved Agency" : "☆ Bookmark Agency"}</button>` : ""}
+            ${currentUser ? `<button class="btn btn-quiet btn-sm" style="color:#E5EDE2" data-act="open-report-modal" data-target-type="agency" data-target-id="${a.id}" data-target-name="${esc(a.name)}">⚑ Report Agency</button>` : ""}
             ${isOwnerOrMgr ? `<a class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,0.4)" href="#/agency-hub/${a.id}">Edit Agency & Team Workspace</a>` : ""}
           </div>
         </div>
@@ -4560,8 +5665,9 @@ function viewPublicAgency(slug, currentUser) {
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
               ${a.members.map(m => {
-                const uObj = userById(m.userId);
-                if (!uObj) return "";
+                const rawMem = userById(m.userId);
+                if (!rawMem || rawMem.deactivated) return "";
+                const uObj = toPublicStudentProfile(rawMem);
                 const topSkills = (uObj.skills || []).slice(0, 4);
                 return `
                   <div class="member-talent-card" style="border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--ivory);display:flex;flex-direction:column;justify-content:space-between">
@@ -4657,12 +5763,24 @@ function viewPublicAgency(slug, currentUser) {
             `}
           </div>
 
-          <!-- Testimonials -->
-          ${(a.testimonials && a.testimonials.length) ? `
+          <!-- Testimonials & Moderated Client Reviews -->
+          ${(agencyReviews.length || (a.testimonials && a.testimonials.length) || canLeaveReview) ? `
             <div class="card">
-              <h2>Client Testimonials</h2>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+                <h2>Verified Client Reviews & Testimonials</h2>
+                ${canLeaveReview ? `<button class="btn btn-primary btn-sm" data-act="open-review-modal" data-agency-id="${a.id}" data-proj-id="${canLeaveReview.proj ? canLeaveReview.proj.id : canLeaveReview.req.id}" data-proj-title="${esc(canLeaveReview.req.title)}">★ Leave Project Review</button>` : ""}
+              </div>
               <div style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
-                ${a.testimonials.map(t => `
+                ${agencyReviews.map(rv => `
+                  <div style="padding:16px 20px;border-left:4px solid var(--lime);background:var(--ivory);border-radius:0 12px 12px 0">
+                    <div style="font-size:.92rem;font-weight:800;color:var(--forest);margin-bottom:6px">${"★".repeat(rv.rating)}${"☆".repeat(5 - rv.rating)} (${rv.rating}/5) · <span class="badge verified" style="font-size:.7rem">Completed Project Review</span></div>
+                    <p style="font-size:.96rem;color:var(--forest);margin-bottom:8px">"${esc(rv.comment)}"</p>
+                    <div style="font-size:.86rem">
+                      <strong>${esc(rv.clientName)}</strong> · <span style="color:var(--emerald);font-weight:600">Project: ${esc(rv.projectTitle)}</span>
+                    </div>
+                  </div>
+                `).join("")}
+                ${(a.testimonials || []).map(t => `
                   <div style="padding:16px 20px;border-left:4px solid var(--emerald);background:var(--ivory);border-radius:0 12px 12px 0">
                     <p style="font-style:italic;font-size:1.02rem;color:var(--forest);margin-bottom:10px">"${esc(t.quote)}"</p>
                     <div style="font-size:.88rem">
@@ -4862,7 +5980,24 @@ function pageTeamDashboard(agencyId, activeTab = "overview", currentUser) {
 
 function renderAgencyOverview(a, myRequests, u) {
   const activeProjs = (a.projects || []).filter(p => p.status === "In Progress" || p.status === "New");
+  const isOwnerOrMgr = isAgencyOwnerOrManager(a, u.id);
   return `
+    <!-- Agency Verification Status Card -->
+    <div class="card" style="margin-bottom:20px;border-left:4px solid var(--emerald)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <strong style="display:block;font-size:.98rem;margin-bottom:4px">Agency Verification Status: ${agencyVerificationBadge(a)}</strong>
+          <small style="color:var(--muted)">Verification confirms active operational standing only and does not certify professional competence.</small>
+        </div>
+        ${isOwnerOrMgr && a.status === "active" && a.verifiedStatus !== "verified" ? `
+          <form data-form="request-agency-verif" data-agency-id="${a.id}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" name="docNote" class="inp" placeholder="Verification note (optional)" style="width:220px;padding:6px 10px">
+            <button type="submit" class="btn btn-ghost btn-sm">${a.verifiedStatus === "pending" ? "Verification Pending Review" : "Request Agency Verification"}</button>
+          </form>
+        ` : ""}
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:24px">
       <div class="card" style="padding:16px">
         <small style="color:var(--muted)">Active Members</small>
@@ -5565,7 +6700,7 @@ function getAgencyTeamSkills(a) {
 }
 
 function pageMarketplace(currentUser) {
-  const allAgencies = (db.agencies || []).filter(a => a.status === "active");
+  const allAgencies = (db.agencies || []).filter(a => a.status === "active" && !a.suspended);
   const uniqLocs = [...new Set(allAgencies.map(a => a.location).filter(Boolean))].sort();
   const uniqInds = [...new Set(allAgencies.map(a => a.industry).filter(Boolean))].sort();
   const uniqInsts = [...new Set(allAgencies.map(a => a.institution).filter(Boolean))].sort();
@@ -5590,7 +6725,7 @@ function pageMarketplace(currentUser) {
       </div>
       <div class="field">
         <label for="mcat">Main service</label>
-        <select id="mcat" data-live="market">${opts(CATS, "", "All main services")}</select>
+        <select id="mcat" data-live="market">${opts(getCategories(), "", "All main services")}</select>
       </div>
       <div class="field">
         <label for="mskill">Team skills (aggregated)</label>
@@ -5637,6 +6772,7 @@ function pageMarketplace(currentUser) {
 function marketResults() {
   const container = $("#market-results");
   if (!container) return;
+  const u = me();
   const q = ($("#mq") ? $("#mq").value : "").trim().toLowerCase();
   const cat = ($("#mcat") ? $("#mcat").value : "").trim();
   const skill = ($("#mskill") ? $("#mskill").value : "").trim().toLowerCase();
@@ -5646,7 +6782,7 @@ function marketResults() {
   const lo = ($("#mloc") ? $("#mloc").value : "").trim();
   const sz = ($("#msize") ? $("#msize").value : "").trim();
 
-  let list = (db.agencies || []).filter(a => a.status === "active");
+  let list = (db.agencies || []).filter(a => a.status === "active" && !a.suspended);
 
   if (q) list = list.filter(a => a.name.toLowerCase().includes(q) || a.shortDesc.toLowerCase().includes(q) || (a.mainCategory || "").toLowerCase().includes(q));
   if (cat) list = list.filter(a => a.mainCategory === cat || (a.additionalServices || []).includes(cat));
@@ -5674,12 +6810,16 @@ function marketResults() {
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px">
       ${list.map(a => {
         const teamSkills = getAgencyTeamSkills(a);
+        const isSaved = !!(u && (u.savedAgencies || []).includes(a.id));
         return `
           <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border-top:4px solid var(--emerald)">
             <div>
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px">
                 ${agencyLogo(a)}
-                <span class="badge active" style="font-size:.74rem">Active · ${a.members.length} Members</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                  ${agencyVerificationBadge(a)}
+                  ${u ? `<button class="btn btn-quiet btn-sm" data-act="toggle-save-agency" data-agency-id="${a.id}" style="padding:2px 8px;font-size:.78rem">${isSaved ? "★ Saved" : "☆ Save"}</button>` : ""}
+                </div>
               </div>
               <h3 style="font-size:1.25rem;margin-bottom:6px">
                 <a href="#/agency/${a.slug}" style="text-decoration:none;color:var(--forest)">${esc(a.name)}</a>
@@ -5731,6 +6871,7 @@ function pageClient(u, activeTab = "overview") {
   const reqs = (db.requests || []).filter(r => r.uid === u.id);
   const activeProjs = reqs.filter(r => r.status === "active");
   const quotedReqs = reqs.filter(r => r.status === "quoted" && r.quotation);
+  const savedAgencies = (u.savedAgencies || []).map(agencyById).filter(a => a && !a.suspended);
 
   return `
     ${protoBar()}
@@ -5743,6 +6884,8 @@ function pageClient(u, activeTab = "overview") {
           <span style="font-weight:700">Client Portal</span>
         </div>
         <div style="display:flex;gap:10px;align-items:center">
+          <a class="btn btn-quiet btn-sm" href="#/search">Search</a>
+          <a class="btn btn-quiet btn-sm" href="#/help">Help</a>
           <button class="btn btn-primary btn-sm" data-act="open-quote-modal">+ New Project Request</button>
           <button class="btn btn-quiet btn-sm" data-act="logout">Log out</button>
         </div>
@@ -5762,6 +6905,7 @@ function pageClient(u, activeTab = "overview") {
         <a href="#/client/quotes" class="${activeTab === "quotes" ? "on" : ""}">Proposals & Quotes (${quotedReqs.length})</a>
         <a href="#/client/projects" class="${activeTab === "projects" ? "on" : ""}">Active Projects (${activeProjs.length})</a>
         <a href="#/client/billing" class="${activeTab === "billing" ? "on" : ""}">Payments & Invoices</a>
+        <a href="#/client/saved" class="${activeTab === "saved" ? "on" : ""}">Saved Agencies (${savedAgencies.length})</a>
         <a href="#/marketplace" class="">Explore Marketplace ↗</a>
       </nav>
 
@@ -5771,7 +6915,40 @@ function pageClient(u, activeTab = "overview") {
       ${activeTab === "quotes" ? renderClientQuotes(u, quotedReqs) : ""}
       ${activeTab === "projects" ? renderClientProjects(u, activeProjs) : ""}
       ${activeTab === "billing" ? renderClientBilling(u, activeProjs) : ""}
+      ${activeTab === "saved" ? renderClientSavedAgencies(u, savedAgencies) : ""}
     </div>
+    ${appFooter(u)}
+  `;
+}
+
+function renderClientSavedAgencies(u, savedAgencies) {
+  return `
+    <div style="margin-bottom:18px">
+      <h2>Saved & Bookmarked Agencies (${savedAgencies.length})</h2>
+      <p class="c-sub">Quickly revisit vetted student teams you saved from the marketplace.</p>
+    </div>
+    ${savedAgencies.length ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:18px">
+        ${savedAgencies.map(a => `
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                ${agencyLogo(a)}
+                ${agencyVerificationBadge(a)}
+              </div>
+              <h3 style="margin:6px 0"><a href="#/agency/${a.slug}">${esc(a.name)}</a></h3>
+              <p style="font-size:.88rem;color:var(--muted);margin-bottom:12px">${esc(a.shortDesc)}</p>
+              <small style="color:var(--muted)">📍 ${esc(a.location)} · ${a.members.length} members</small>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+              <a class="btn btn-ghost btn-sm" href="#/agency/${a.slug}">View Profile</a>
+              <button class="btn btn-primary btn-sm" data-act="open-quote-modal" data-agency-id="${a.id}">Request Quote</button>
+              <button class="btn btn-quiet btn-sm" data-act="toggle-save-agency" data-agency-id="${a.id}">Remove</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    ` : `<div class="empty">No saved agencies yet. <a href="#/marketplace">Browse Marketplace</a> to bookmark teams.</div>`}
   `;
 }
 
@@ -5951,22 +7128,24 @@ function renderClientQuotes(u, quotedReqs) {
 function renderClientProjects(u, activeProjs) {
   return `
     <div style="margin-bottom:18px">
-      <h2>Active Commercial Projects (${activeProjs.length})</h2>
-      <p class="c-sub">Track active deliverables, milestone handovers, and project updates.</p>
+      <h2>Active & Completed Commercial Projects (${activeProjs.length})</h2>
+      <p class="c-sub">Track active deliverables, milestone handovers, and submit verified reviews once completed.</p>
     </div>
     ${activeProjs.length ? `
       <div style="display:flex;flex-direction:column;gap:18px">
         ${activeProjs.map(r => {
           const q = r.quotation;
           const a = q ? agencyById(q.agencyId) : null;
-          const proj = a ? (a.projects || []).find(p => p.title.includes(r.title) || r.title.includes(p.title)) : null;
+          const proj = a ? (a.projects || []).find(p => p.title === r.title || p.title.includes(r.title) || r.title.includes(p.title)) : null;
+          const isCompleted = !!(proj && proj.status === "Completed");
+          const existingRev = proj ? (db.reviews || []).find(rv => rv.clientId === u.id && rv.projectId === proj.id) : null;
           return `
             <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">
                 <div>
-                  <span class="badge active">In Delivery</span>
+                  <span class="badge ${isCompleted ? "verified" : "active"}">${isCompleted ? "Completed" : "In Delivery"}</span>
                   <h3 style="font-size:1.3rem;margin:6px 0">${esc(r.title)}</h3>
-                  <small style="color:var(--muted)">Agency: <strong>${a ? esc(a.name) : "Contracted Team"}</strong> · Target Date: ${q ? esc(q.estimatedDelivery) : "As agreed"}</small>
+                  <small style="color:var(--muted)">Agency: <strong>${a ? `<a href="#/agency/${a.slug}">${esc(a.name)}</a>` : "Contracted Team"}</strong> · Target Date: ${q ? esc(q.estimatedDelivery) : "As agreed"}</small>
                 </div>
                 <div class="quote-price" style="font-size:1.4rem">${q ? esc(q.price) : ""}</div>
               </div>
@@ -5998,6 +7177,14 @@ function renderClientProjects(u, activeProjs) {
                   </div>
                 </div>
               ` : ""}
+
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+                ${isCompleted && a && !existingRev ? `
+                  <button class="btn btn-primary btn-sm" data-act="open-review-modal" data-agency-id="${a.id}" data-proj-id="${proj.id}" data-proj-title="${esc(r.title)}">★ Leave Agency Review</button>
+                ` : ""}
+                ${existingRev ? `<span class="badge verified">✓ Reviewed (${existingRev.rating}/5 ★)</span>` : ""}
+                ${a ? `<button class="btn btn-quiet btn-sm" data-act="open-report-modal" data-target-type="agency" data-target-id="${a.id}" data-target-name="${esc(a.name)}">Report Issue</button>` : ""}
+              </div>
             </div>`;
         }).join("")}
       </div>
@@ -6112,7 +7299,7 @@ function openQuoteModal(agencyId, initialService = "", initialCategory = "") {
         <div class="full">
           ${field("title", "Project Title", inp("title", "text", `placeholder="e.g. Mobile App MVP or Brand Identity Package" value="${esc(initialService)}"`))}
         </div>
-        ${field("category", "Service Category", `<select id="category" name="category">${opts(CATS, initialCategory || (targetAgency ? targetAgency.mainCategory : ""), "Select category")}</select>`)}
+        ${field("category", "Service Category", `<select id="category" name="category">${opts(getCategories(), initialCategory || (targetAgency ? targetAgency.mainCategory : ""), "Select category")}</select>`)}
         ${field("budget", "Budget Range", inp("budget", "text", 'placeholder="e.g. ₦150,000 to ₦300,000"'))}
         <div class="full">
           ${field("desc", "Project Description & Deliverables", `<textarea id="desc" name="desc" rows="4" placeholder="Describe the problem, required deliverables, brand preferences, and expected goals."></textarea>`)}
@@ -6260,7 +7447,7 @@ function openAddServiceModal(agencyId) {
         <div class="full">
           ${field("title", "Service Title", inp("title", "text", 'placeholder="e.g. E-Commerce Web Store Setup"'))}
         </div>
-        ${field("category", "Service Category", `<select id="category" name="category">${opts(CATS, a.mainCategory)}</select>`)}
+        ${field("category", "Service Category", `<select id="category" name="category">${opts(getCategories(), a.mainCategory)}</select>`)}
         ${field("startingPrice", "Starting Fee / Pricing", inp("startingPrice", "text", 'placeholder="e.g. ₦180,000 or Custom Quotation"'))}
         ${field("timeline", "Delivery Timeline", inp("timeline", "text", 'placeholder="e.g. 1 to 2 weeks"'))}
         <div class="full">
@@ -6799,7 +7986,7 @@ function openReceiptModal(paymentId) {
       <div>
         <small style="color:var(--muted);display:block">Contracted Agency:</small>
         <strong>${esc(p.agencyName)}</strong>
-        <div style="font-size:.82rem;color:var(--muted)">Verified Student Agency</div>
+        <div style="font-size:.82rem;color:var(--muted)">Student Agency Unit</div>
       </div>
       <div>
         <small style="color:var(--muted);display:block">Client Details:</small>
@@ -7081,6 +8268,824 @@ function openPostOppModal() {
   `);
 }
 
+function openConnectModal(targetUserId) {
+  const u = me();
+  if (!u) {
+    FLASH = { type: "info", text: "Log in as a student to send a connection request." };
+    return go("/login");
+  }
+  const target = userById(targetUserId);
+  if (!target) return toast("Student profile not found.");
+  if ((u.blockedUsers || []).includes(target.id) || (target.blockedUsers || []).includes(u.id)) {
+    return toast("Unable to send connection request.");
+  }
+  const topSkill = (target.skills && target.skills[0]) ? target.skills[0].name : (target.department || "student work");
+  const defaultNote = `Hi ${firstName(target)}, I saw your ${topSkill} profile on TeamBud and would love to connect and explore potential collaborations!`;
+
+  showModal(`
+    <h2 style="margin-bottom:6px">Connect with ${esc(target.name)}</h2>
+    <p class="c-sub" style="margin-bottom:16px">Include a brief introduction note so ${esc(firstName(target))} knows why you'd like to collaborate.</p>
+    <div style="display:flex;align-items:center;gap:12px;background:var(--ivory);padding:12px 14px;border-radius:12px;border:1px solid var(--line);margin-bottom:16px">
+      ${avatar(target)}
+      <div style="min-width:0">
+        <strong style="display:block;color:var(--forest)">${esc(target.name)}</strong>
+        <small style="color:var(--muted)">${esc(target.department)}, ${esc(target.institution)}</small>
+      </div>
+    </div>
+    <form data-form="send-connect-form" data-uid="${target.id}" novalidate>
+      <div class="field">
+        <label for="connect-note">Personal Introduction Note (Optional)</label>
+        <textarea id="connect-note" name="note" rows="3" maxlength="300" placeholder="Introduce yourself, your skills, or a project idea...">${esc(defaultNote)}</textarea>
+        <div class="hint">Up to 300 characters. Clear intro notes receive 3x faster responses.</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:18px">
+        <button class="btn btn-primary" type="submit">Send Connection Request</button>
+        <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+      </div>
+    </form>
+  `);
+}
+
+function openReportModal(targetId, targetName, targetType = "student") {
+  const u = me();
+  if (!u) {
+    FLASH = { type: "info", text: "Log in to submit a safety report." };
+    return go("/login");
+  }
+  const isAgency = targetType === "agency";
+  const target = isAgency ? agencyById(targetId) : userById(targetId);
+  const displayName = target ? target.name : (targetName || (isAgency ? "this agency" : "this student"));
+
+  showModal(`
+    <h2 style="margin-bottom:6px">Report ${isAgency ? "Agency" : "Account"}: ${esc(displayName)}</h2>
+    <p class="c-sub" style="margin-bottom:16px">Help keep TeamBud safe, authentic, and accountable for students and clients.</p>
+    <form data-form="submit-report-form" data-uid="${targetId}" data-target-type="${isAgency ? "agency" : "student"}" novalidate>
+      <div class="field">
+        <label for="report-reason">Reason for Report *</label>
+        <select id="report-reason" name="reason" class="inp">
+          <option value="Fake agency">Fake agency</option>
+          <option value="Misleading service listing">Misleading service listing</option>
+          <option value="Fraudulent activity">Fraudulent activity</option>
+          <option value="Harassment">Harassment</option>
+          <option value="Inappropriate content">Inappropriate content</option>
+          <option value="Payment dispute">Payment dispute</option>
+          <option value="Other safety concern">Other safety concern</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="report-comments">Details & Evidence Context</label>
+        <textarea id="report-comments" name="comments" rows="3" placeholder="Describe what happened so administrators can investigate..."></textarea>
+      </div>
+      ${!isAgency ? `
+        <label class="chk" style="margin-top:8px;padding:10px 12px;background:var(--ivory);border:1px solid var(--line);border-radius:10px">
+          <input type="checkbox" name="blockUser" checked>
+          <span>Also block <strong>${esc(displayName)}</strong> from contacting or connecting with me</span>
+        </label>
+      ` : ""}
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button class="btn btn-primary" type="submit">Submit Report</button>
+        <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+      </div>
+    </form>
+  `);
+}
+
+function openReviewModal(agencyId, projectId, projectTitle) {
+  const u = me();
+  const a = agencyById(agencyId);
+  if (!u || !a) return;
+  showModal(`
+    <h2 style="margin-bottom:6px">Review ${esc(a.name)}</h2>
+    <p class="c-sub" style="margin-bottom:16px">Completed Project: <strong>${esc(projectTitle || "Project")}</strong></p>
+    <form data-form="submit-agency-review" data-agency-id="${a.id}" data-proj-id="${projectId}" novalidate>
+      <div class="field">
+        <label for="rev-rating">Rating *</label>
+        <select id="rev-rating" name="rating" class="inp">
+          <option value="5">★★★★★ (5 — Excellent)</option>
+          <option value="4">★★★★☆ (4 — Very Good)</option>
+          <option value="3">★★★☆☆ (3 — Good)</option>
+          <option value="2">★★☆☆☆ (2 — Fair)</option>
+          <option value="1">★☆☆☆☆ (1 — Poor)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="rev-comment">Written Feedback *</label>
+        <textarea id="rev-comment" name="comment" rows="4" required placeholder="Share your experience working with this student agency..."></textarea>
+        <div class="err" data-err="comment"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:16px">
+        <button class="btn btn-primary" type="submit">Publish Review</button>
+        <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+      </div>
+    </form>
+  `);
+}
+
+/* ===================== Section 12: Administrative Dashboard ===================== */
+let adminStudentSearch = "";
+
+function pageAdmin(u, activeTab = "overview") {
+  if (!u || u.role !== "admin") {
+    return `
+      ${protoBar()}
+      <div style="max-width:680px;margin:60px auto;padding:24px">
+        ${publicHeader(u)}
+        <div class="card" style="text-align:center;padding:42px 24px">
+          <span class="badge needs-members" style="margin-bottom:12px">Restricted Area</span>
+          <h1>Administrator Access Required</h1>
+          <p class="c-sub" style="margin:10px 0 20px">Only authorised TeamBud administrators can access the platform moderation and governance dashboard.</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a class="btn btn-primary" href="#/login">Log In with Admin Account</a>
+            <a class="btn btn-ghost" href="${SITE_URL}">Return Home</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const stats = API.adminGetStats(u);
+  const cats = getCategories();
+  const opps = db.opportunities || [];
+  const reps = db.reports || [];
+  const revs = db.reviews || [];
+  const msgs = db.contactMessages || [];
+  const ps = db.platformSettings || DEFAULT_PLATFORM_SETTINGS();
+
+  const stuList = (db.users || []).filter(x => x.role === "student").filter(s => {
+    const q = adminStudentSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (s.name || "").toLowerCase().includes(q) || (s.email || "").toLowerCase().includes(q) || (s.username || "").toLowerCase().includes(q) || (s.institution || "").toLowerCase().includes(q);
+  });
+
+  const tabs = [
+    ["overview", "Overview"],
+    ["students", `Students (${stats.totalStudents})`],
+    ["agencies", `Agencies (${stats.totalAgencies})`],
+    ["categories", `Categories (${cats.length})`],
+    ["opportunities", `Opportunities (${opps.length})`],
+    ["reports", `Reports & Moderation (${stats.openReports})`],
+    ["settings", "Platform Settings"]
+  ];
+
+  return `
+    ${protoBar()}
+    <div style="max-width:1200px;margin:0 auto;padding:20px 24px 80px">
+      <header class="row" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
+          <span class="badge verified">Admin Console</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span style="font-size:.88rem;color:var(--muted)">Signed in as <strong>${esc(u.name)}</strong></span>
+          <a class="btn btn-quiet btn-sm" href="#/search">Search</a>
+          <button class="btn btn-quiet btn-sm" data-act="logout">Log out</button>
+        </div>
+      </header>
+
+      ${flash()}
+
+      <nav class="subnav" aria-label="Admin sections">
+        ${tabs.map(([id, label]) => `<a href="#/admin/${id}" class="${activeTab === id ? "on" : ""}">${esc(label)}</a>`).join("")}
+      </nav>
+
+      ${activeTab === "overview" ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px">
+          <div class="card"><small style="color:var(--muted)">Total Registered Students</small><div style="font-size:1.9rem;font-weight:800;color:var(--forest)">${stats.totalStudents}</div><small>${stats.emailVerifiedStudents} email verified</small></div>
+          <div class="card"><small style="color:var(--muted)">Student-Verified Accounts</small><div style="font-size:1.9rem;font-weight:800;color:var(--emerald)">${stats.verifiedStudents}</div><small><a href="#/admin/students">Review requests</a></small></div>
+          <div class="card"><small style="color:var(--muted)">Total Agencies</small><div style="font-size:1.9rem;font-weight:800;color:var(--forest)">${stats.totalAgencies}</div><small>${stats.verifiedAgencies} agency-verified</small></div>
+          <div class="card"><small style="color:var(--muted)">Active Agencies</small><div style="font-size:1.9rem;font-weight:800;color:var(--emerald)">${stats.activeAgencies}</div><small>3–10 active members</small></div>
+          <div class="card"><small style="color:var(--muted)">Forming / Needs Members</small><div style="font-size:1.9rem;font-weight:800;color:#B26A00">${stats.formingAgencies}</div><small>Unlisted until 3 members</small></div>
+          <div class="card"><small style="color:var(--muted)">Registered Clients</small><div style="font-size:1.9rem;font-weight:800;color:var(--forest)">${stats.registeredClients}</div><small>Commercial buyers</small></div>
+          <div class="card"><small style="color:var(--muted)">Active Projects</small><div style="font-size:1.9rem;font-weight:800;color:var(--forest)">${stats.activeProjects}</div><small>In delivery</small></div>
+          <div class="card"><small style="color:var(--muted)">Completed Projects</small><div style="font-size:1.9rem;font-weight:800;color:var(--emerald)">${stats.completedProjects}</div><small>Delivered milestones</small></div>
+          <div class="card"><small style="color:var(--muted)">Reported Accounts / Cases</small><div style="font-size:1.9rem;font-weight:800;color:#C62828">${stats.reportedAccounts}</div><small>${stats.openReports} open · <a href="#/admin/reports">Investigate</a></small></div>
+        </div>
+        <div class="cols">
+          <div class="card">
+            <h2>Pending Verification Queue (${stats.pendingVerifications})</h2>
+            <p class="c-sub">Approve only verified student or agency identity requests — never mark agencies as verified automatically.</p>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+              ${(db.verificationRequests || []).filter(v => v.status === "pending").map(v => `
+                <div style="padding:12px;background:var(--ivory);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+                  <div>
+                    <span class="badge role">${esc(v.targetType.toUpperCase())}</span>
+                    <strong style="margin-left:6px">${esc(v.targetName)}</strong>
+                    <div style="font-size:.82rem;color:var(--muted);margin-top:4px">${esc(v.docNote || "")} ${v.institutionEmail ? `· ${esc(v.institutionEmail)}` : ""}</div>
+                  </div>
+                  <div style="display:flex;gap:6px">
+                    ${v.targetType === "student"
+                      ? `<button class="btn btn-primary btn-sm" data-act="admin-approve-stu-verif" data-uid="${v.targetId}">Approve</button><button class="btn btn-quiet btn-sm" data-act="admin-reject-stu-verif" data-uid="${v.targetId}">Reject</button>`
+                      : `<button class="btn btn-primary btn-sm" data-act="admin-approve-ag-verif" data-aid="${v.targetId}">Approve</button><button class="btn btn-quiet btn-sm" data-act="admin-reject-ag-verif" data-aid="${v.targetId}">Reject</button>`}
+                  </div>
+                </div>
+              `).join("") || `<div class="empty">No pending verification requests.</div>`}
+            </div>
+          </div>
+          <div class="card">
+            <h2>Recent Safety Reports (${stats.openReports} open)</h2>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+              ${reps.slice(0, 4).map(r => `
+                <div style="padding:12px;background:var(--ivory);border-radius:10px">
+                  <div style="display:flex;justify-content:space-between"><strong>${esc(r.targetName)}</strong><span class="badge ${r.status === "resolved" ? "verified" : "forming"}">${esc(r.status)}</span></div>
+                  <div style="font-size:.84rem;color:var(--muted);margin-top:4px">${esc(r.reason)} · Reported by ${esc(r.reporterName || "User")}</div>
+                </div>
+              `).join("") || `<div class="empty">No safety reports logged.</div>`}
+            </div>
+            <div style="margin-top:12px"><a class="btn btn-ghost btn-sm" href="#/admin/reports">Open Moderation Queue</a></div>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "students" ? `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+            <div>
+              <h2>Student Management</h2>
+              <p class="c-sub">Search registered students, review verification requests, or suspend/restore accounts.</p>
+            </div>
+            <input type="text" id="admin-stu-search" class="inp" style="max-width:300px" value="${esc(adminStudentSearch)}" placeholder="Search name, email, username, school..." data-live="admin-stu">
+          </div>
+          <div style="overflow-x:auto">
+            <table class="ptable" style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:2px solid var(--line);text-align:left;font-size:.84rem;color:var(--muted)">
+                  <th style="padding:10px">Student</th>
+                  <th style="padding:10px">Institution</th>
+                  <th style="padding:10px">Verification Tier</th>
+                  <th style="padding:10px">Status</th>
+                  <th style="padding:10px;text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stuList.map(s => `
+                  <tr style="border-bottom:1px solid var(--line);font-size:.9rem">
+                    <td style="padding:10px"><strong>${esc(s.name)}</strong><br><small style="color:var(--muted)">@${esc(s.username)} · ${esc(s.email)}</small></td>
+                    <td style="padding:10px">${esc(s.institution)}<br><small style="color:var(--muted)">${esc(s.department)}</small></td>
+                    <td style="padding:10px">${studentVerificationBadge(s)}</td>
+                    <td style="padding:10px">${s.suspended ? `<span class="badge needs-members">Suspended</span>` : (s.deactivated ? `<span class="badge role">Deactivated</span>` : `<span class="badge active">Active</span>`)}</td>
+                    <td style="padding:10px;text-align:right;white-space:nowrap">
+                      <a class="btn btn-quiet btn-sm" href="#/talent/${esc(s.username)}" target="_blank">View</a>
+                      ${s.studentVerificationStatus !== "verified" ? `<button class="btn btn-primary btn-sm" data-act="admin-approve-stu-verif" data-uid="${s.id}">Verify</button>` : `<button class="btn btn-quiet btn-sm" data-act="admin-reject-stu-verif" data-uid="${s.id}">Revoke Verif</button>`}
+                      <button class="btn btn-ghost btn-sm" data-act="admin-toggle-stu-suspend" data-uid="${s.id}" style="color:${s.suspended ? "var(--emerald)" : "#C62828"}">${s.suspended ? "Restore" : "Suspend"}</button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "agencies" ? `
+        <div class="card">
+          <h2>Agency Management</h2>
+          <p class="c-sub" style="margin-bottom:16px">Review agency status, verify authentic agencies, or suspend non-compliant listings. Active agencies without admin approval remain clearly labeled Unverified.</p>
+          <div style="overflow-x:auto">
+            <table class="ptable" style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:2px solid var(--line);text-align:left;font-size:.84rem;color:var(--muted)">
+                  <th style="padding:10px">Agency</th>
+                  <th style="padding:10px">Team Size</th>
+                  <th style="padding:10px">Operational Status</th>
+                  <th style="padding:10px">Verification Standing</th>
+                  <th style="padding:10px;text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(db.agencies || []).map(a => `
+                  <tr style="border-bottom:1px solid var(--line);font-size:.9rem">
+                    <td style="padding:10px"><strong>${esc(a.name)}</strong><br><small style="color:var(--muted)">${esc(a.institution)} · ${esc(a.mainCategory)}</small></td>
+                    <td style="padding:10px">${(a.members || []).length} / 10</td>
+                    <td style="padding:10px"><span class="badge ${a.status === "active" ? "active" : "forming"}">${esc(a.status)}</span></td>
+                    <td style="padding:10px">${agencyVerificationBadge(a)}</td>
+                    <td style="padding:10px;text-align:right;white-space:nowrap">
+                      <a class="btn btn-quiet btn-sm" href="#/agency/${esc(a.slug)}" target="_blank">View</a>
+                      ${a.verifiedStatus !== "verified" ? `<button class="btn btn-primary btn-sm" data-act="admin-approve-ag-verif" data-aid="${a.id}">Approve Verif</button>` : `<button class="btn btn-quiet btn-sm" data-act="admin-reject-ag-verif" data-aid="${a.id}">Revoke Verif</button>`}
+                      <button class="btn btn-ghost btn-sm" data-act="admin-toggle-ag-suspend" data-aid="${a.id}" style="color:${a.suspended ? "var(--emerald)" : "#C62828"}">${a.suspended ? "Restore" : "Suspend"}</button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "categories" ? `
+        <div class="cols">
+          <div class="card">
+            <h2>Service Categories (${cats.length})</h2>
+            <p class="c-sub" style="margin-bottom:14px">Manage service categories available across talent discovery, agencies, and client requests.</p>
+            <ul class="list">
+              ${cats.map(c => `
+                <li class="row">
+                  <strong>${esc(c)}</strong>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-quiet btn-sm" data-act="admin-edit-cat-modal" data-cat="${esc(c)}">Edit</button>
+                    <button class="btn btn-quiet btn-sm" data-act="admin-rm-cat" data-cat="${esc(c)}" style="color:#C62828">Remove</button>
+                  </div>
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Add New Category</h2>
+            <form data-form="admin-add-cat" novalidate style="margin-top:12px">
+              ${field("name", "Category Name", inp("name", "text", 'placeholder="e.g. Cybersecurity & Cloud Consulting"'))}
+              <button class="btn btn-primary" type="submit" style="margin-top:10px">Add Category</button>
+            </form>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "opportunities" ? `
+        <div class="cols">
+          <div class="card">
+            <h2>Manage Opportunities (${opps.length})</h2>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+              ${opps.map(o => `
+                <div style="padding:14px;background:var(--ivory);border-radius:10px;border:1px solid var(--line)">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                    <div>
+                      <span class="badge ${o.verificationStatus === "verified" ? "verified" : "community"}">${esc(o.verificationStatus)}</span>
+                      <strong style="display:block;margin-top:4px">${esc(o.title)}</strong>
+                      <small style="color:var(--muted)">${esc(o.organisation)} · ${esc(o.category)} · Deadline: ${esc(o.deadline || "Open")}</small>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-ghost btn-sm" data-act="admin-edit-opp-modal" data-opp-id="${o.id}">Edit</button>
+                      <button class="btn btn-quiet btn-sm" data-act="admin-rm-opp" data-opp-id="${o.id}" style="color:#C62828">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              `).join("") || `<div class="empty">No opportunities published.</div>`}
+            </div>
+          </div>
+          <div class="card">
+            <h2>Publish New Opportunity</h2>
+            <form data-form="admin-save-opp" novalidate style="margin-top:12px">
+              ${field("title", "Title *", inp("title", "text", 'placeholder="e.g. National Student Startup Grant"'))}
+              ${field("organisation", "Organisation *", inp("organisation", "text", 'placeholder="e.g. Lagos Innovates"'))}
+              ${field("category", "Category", `<select id="category" name="category"><option value="Client Projects">Client Projects</option><option value="Grants">Grants</option><option value="Competitions">Competitions</option><option value="Startup Challenges">Startup Challenges</option><option value="Mentorship Programmes">Mentorship Programmes</option><option value="Internship Opportunities">Internship Opportunities</option><option value="Business Partnerships">Business Partnerships</option><option value="Training">Training</option></select>`)}
+              ${field("eligibility", "Eligibility *", inp("eligibility", "text", 'placeholder="e.g. Individual Students or Student Agencies"'))}
+              ${field("deadline", "Deadline", inp("deadline", "date"))}
+              ${field("rewardOrValue", "Grant / Compensation", inp("rewardOrValue", "text", 'placeholder="e.g. ₦2,500,000"'))}
+              ${field("verificationStatus", "Badge", `<select id="verificationStatus" name="verificationStatus"><option value="verified">Verified by TeamBud</option><option value="community">Community</option></select>`)}
+              ${field("description", "Description *", `<textarea id="description" name="description" rows="3"></textarea>`)}
+              <button class="btn btn-primary btn-block" type="submit" style="margin-top:10px">Publish Opportunity</button>
+            </form>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "reports" ? `
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="card">
+            <h2>Reports & Moderation (${reps.length})</h2>
+            <p class="c-sub" style="margin-bottom:14px">Investigate reported accounts, fake agencies, misleading listings, fraud, harassment, or payment disputes.</p>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              ${reps.map(r => `
+                <div style="padding:16px;background:var(--ivory);border-radius:12px;border:1px solid var(--line)">
+                  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                    <div>
+                      <span class="badge role">${esc((r.targetType || "account").toUpperCase())}</span>
+                      <strong style="margin-left:6px">${esc(r.targetName || r.reportedId)}</strong>
+                      <span style="color:var(--muted);font-size:.86rem"> — Reason: <strong>${esc(r.reason)}</strong></span>
+                    </div>
+                    <span class="badge ${r.status === "resolved" ? "verified" : "forming"}">${esc((r.status || "open").toUpperCase())}</span>
+                  </div>
+                  <p style="font-size:.9rem;margin-bottom:10px">${esc(r.details || r.comments || "No additional details provided.")}</p>
+                  <form data-form="admin-update-report" data-rid="${r.id}" style="display:grid;grid-template-columns:160px 1fr 1fr auto;gap:8px;align-items:end">
+                    <div>
+                      <label style="font-size:.76rem;font-weight:700">Case Status</label>
+                      <select name="status" class="inp" style="padding:6px 8px">
+                        <option value="open" ${r.status === "open" ? "selected" : ""}>Open</option>
+                        <option value="investigating" ${r.status === "investigating" ? "selected" : ""}>Investigating</option>
+                        <option value="resolved" ${r.status === "resolved" ? "selected" : ""}>Resolved</option>
+                        <option value="dismissed" ${r.status === "dismissed" ? "selected" : ""}>Dismissed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:.76rem;font-weight:700">Admin Investigation Notes</label>
+                      <input type="text" name="adminNotes" class="inp" value="${esc(r.adminNotes || "")}" placeholder="Findings & context" style="padding:6px 8px">
+                    </div>
+                    <div>
+                      <label style="font-size:.76rem;font-weight:700">Action Recorded</label>
+                      <input type="text" name="actionTaken" class="inp" value="${esc(r.actionTaken || "")}" placeholder="e.g. Warning sent / Listing edited" style="padding:6px 8px">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Case</button>
+                  </form>
+                </div>
+              `).join("") || `<div class="empty">No moderation reports submitted.</div>`}
+            </div>
+          </div>
+
+          <div class="cols">
+            <div class="card">
+              <h2>Client Reviews Moderation (${revs.length})</h2>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+                ${revs.map(rv => `
+                  <div style="padding:12px;background:var(--ivory);border-radius:10px">
+                    <div style="display:flex;justify-content:space-between"><strong>${esc(rv.agencyName)} (${rv.rating}★)</strong><span class="badge ${rv.status === "approved" ? "verified" : "forming"}">${esc(rv.status)}</span></div>
+                    <p style="font-size:.86rem;margin:6px 0">${esc(rv.comment)}</p>
+                    <small style="color:var(--muted)">By ${esc(rv.clientName)} on "${esc(rv.projectTitle)}"</small>
+                    <div style="display:flex;gap:6px;margin-top:8px">
+                      ${rv.status !== "approved" ? `<button class="btn btn-primary btn-sm" data-act="admin-mod-review" data-id="${rv.id}" data-status="approved">Approve</button>` : ""}
+                      ${rv.status !== "hidden" ? `<button class="btn btn-ghost btn-sm" data-act="admin-mod-review" data-id="${rv.id}" data-status="hidden">Hide</button>` : ""}
+                      <button class="btn btn-quiet btn-sm" data-act="admin-mod-review" data-id="${rv.id}" data-status="deleted" style="color:#C62828">Delete</button>
+                    </div>
+                  </div>
+                `).join("") || `<div class="empty">No reviews recorded yet.</div>`}
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>Contact Page Inquiries (${msgs.length})</h2>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+                ${msgs.map(m => `
+                  <div style="padding:12px;background:var(--ivory);border-radius:10px">
+                    <div style="display:flex;justify-content:space-between"><strong>${esc(m.subject)}</strong><span class="badge ${m.status === "resolved" ? "verified" : "forming"}">${esc(m.status)}</span></div>
+                    <p style="font-size:.86rem;margin:6px 0">${esc(m.message)}</p>
+                    <small style="color:var(--muted)">From ${esc(m.name)} (${esc(m.email)})</small>
+                    ${m.status !== "resolved" ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-act="admin-resolve-contact" data-id="${m.id}">Mark Resolved</button></div>` : ""}
+                  </div>
+                `).join("") || `<div class="empty">No contact inquiries yet.</div>`}
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ""}
+
+      ${activeTab === "settings" ? `
+        <div class="card">
+          <h2>Platform Settings & Announcements</h2>
+          <p class="c-sub" style="margin-bottom:16px">Manage platform identity, configurable support email, email templates, payment mode, and global announcements.</p>
+          <form data-form="admin-save-settings" novalidate>
+            <div class="grid2">
+              ${field("platformName", "Platform Name", inp("platformName", "text", `value="${esc(ps.platformName || "TeamBud")}"`))}
+              ${field("tagline", "Platform Tagline", inp("tagline", "text", `value="${esc(ps.tagline || "Find Your People. Build Your Future.")}"`))}
+              ${field("supportEmail", "Configurable Support Email", inp("supportEmail", "email", `value="${esc(ps.supportEmail || "")}" placeholder="Configured by administrator"`), "Displayed on Contact page & footer when configured.")}
+              ${field("brandLogoUrl", "Brand Logo Override URL (Optional)", inp("brandLogoUrl", "url", `value="${esc(ps.brandLogoUrl || "")}" placeholder="https://..."`))}
+              ${field("paystackMode", "Paystack Environment Mode", `<select id="paystackMode" name="paystackMode"><option value="test" ${ps.paystackMode !== "live" ? "selected" : ""}>Test Mode (Development)</option><option value="live" ${ps.paystackMode === "live" ? "selected" : ""}>Live Production Mode</option></select>`)}
+              <div class="full">
+                ${field("announcement", "Platform Announcement Banner", inp("announcement", "text", `value="${esc(ps.announcement || "")}" placeholder="e.g. Applications open for Q3 Campus Innovation Grants!"`))}
+                <label class="chk" style="margin-top:8px"><input type="checkbox" name="announcementActive" ${ps.announcementActive ? "checked" : ""}> Display announcement banner across platform pages</label>
+              </div>
+              <div class="full" style="border-top:1px solid var(--line);padding-top:14px;margin-top:6px">
+                <h3>Email Notification Templates</h3>
+              </div>
+              ${field("welcomeSubject", "Welcome Email Subject", inp("welcomeSubject", "text", `value="${esc((ps.emailTemplates && ps.emailTemplates.welcomeSubject) || "")}"`))}
+              ${field("verificationSubject", "Verification Email Subject", inp("verificationSubject", "text", `value="${esc((ps.emailTemplates && ps.emailTemplates.verificationSubject) || "")}"`))}
+              <div class="full">${field("welcomeBody", "Welcome Email Body", `<textarea id="welcomeBody" name="welcomeBody" rows="2">${esc((ps.emailTemplates && ps.emailTemplates.welcomeBody) || "")}</textarea>`)}</div>
+              <div class="full">${field("verificationBody", "Verification Email Body", `<textarea id="verificationBody" name="verificationBody" rows="2">${esc((ps.emailTemplates && ps.emailTemplates.verificationBody) || "")}</textarea>`)}</div>
+            </div>
+            <button class="btn btn-primary" type="submit" style="margin-top:16px">Save Platform Settings</button>
+          </form>
+        </div>
+      ` : ""}
+    </div>
+    ${appFooter(u)}
+  `;
+}
+
+/* ===================== Section 13 & 16: Search, Help, Contact & Legal Pages ===================== */
+let globalSearchQuery = "";
+let globalSearchType = "all";
+
+function pageSearch(u) {
+  const q = globalSearchQuery.trim().toLowerCase();
+  const matchedStudents = students(u).filter(s => !q || (s.name || "").toLowerCase().includes(q) || (s.headline || "").toLowerCase().includes(q) || (s.department || "").toLowerCase().includes(q) || (s.institution || "").toLowerCase().includes(q) || (s.skills || []).some(sk => sk.name.toLowerCase().includes(q)));
+  const activeAgencies = (db.agencies || []).filter(a => a.status === "active" && !a.suspended);
+  const matchedAgencies = activeAgencies.filter(a => !q || (a.name || "").toLowerCase().includes(q) || (a.shortDesc || "").toLowerCase().includes(q) || (a.mainCategory || "").toLowerCase().includes(q) || (a.institution || "").toLowerCase().includes(q));
+  const matchedServices = [];
+  activeAgencies.forEach(a => {
+    (a.services || []).forEach(svc => {
+      if (!q || (svc.title || "").toLowerCase().includes(q) || (svc.desc || "").toLowerCase().includes(q) || (svc.category || "").toLowerCase().includes(q)) {
+        matchedServices.push({ agency: a, service: svc });
+      }
+    });
+  });
+  const matchedOpps = (db.opportunities || []).filter(o => !q || (o.title || "").toLowerCase().includes(q) || (o.organisation || "").toLowerCase().includes(q) || (o.description || "").toLowerCase().includes(q) || (o.category || "").toLowerCase().includes(q));
+
+  const show = t => globalSearchType === "all" || globalSearchType === t;
+
+  return `
+    ${protoBar()}
+    <div style="max-width:1160px;margin:0 auto;padding:20px 24px 80px">
+      ${publicHeader(u, "search")}
+      <div class="page-h">
+        <div>
+          <h1>Global Platform Search</h1>
+          <p>Search verified students, active student agencies, service packages, and curated opportunities in one place.</p>
+        </div>
+      </div>
+
+      <form data-form="global-search-form" class="card" style="margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" name="q" id="global-search-inp" class="inp" style="flex:1;min-width:240px" value="${esc(globalSearchQuery)}" placeholder="Search skills, student names, agencies, services, grants...">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px">
+        ${[
+          ["all", `All Results (${matchedStudents.length + matchedAgencies.length + matchedServices.length + matchedOpps.length})`],
+          ["students", `Students (${matchedStudents.length})`],
+          ["agencies", `Agencies (${matchedAgencies.length})`],
+          ["services", `Services (${matchedServices.length})`],
+          ["opportunities", `Opportunities (${matchedOpps.length})`]
+        ].map(([k, lbl]) => `<button class="opp-chip ${globalSearchType === k ? "active" : ""}" data-act="set-search-type" data-type="${k}">${esc(lbl)}</button>`).join("")}
+      </div>
+
+      ${show("students") ? `
+        <section style="margin-bottom:28px">
+          <h2 style="margin-bottom:12px">Students (${matchedStudents.length})</h2>
+          ${matchedStudents.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+            ${matchedStudents.slice(0, 12).map(s => `
+              <div class="card">
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${avatar(s)}<div><strong>${esc(s.name)}</strong><div style="font-size:.8rem;color:var(--muted)">${esc(s.institution)}</div></div></div>
+                <div style="margin-bottom:8px">${studentVerificationBadge(s)}</div>
+                <p style="font-size:.86rem;color:var(--muted);margin-bottom:10px">${esc(s.headline || s.bio || "")}</p>
+                <a class="btn btn-ghost btn-sm btn-block" href="#/talent/${esc(s.username)}">View Talent Profile</a>
+              </div>
+            `).join("")}
+          </div>` : `<div class="empty">No matching students found.</div>`}
+        </section>
+      ` : ""}
+
+      ${show("agencies") ? `
+        <section style="margin-bottom:28px">
+          <h2 style="margin-bottom:12px">Agencies (${matchedAgencies.length})</h2>
+          ${matchedAgencies.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+            ${matchedAgencies.map(a => `
+              <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">${agencyLogo(a)}${agencyVerificationBadge(a)}</div>
+                <h3 style="margin:6px 0">${esc(a.name)}</h3>
+                <p style="font-size:.86rem;color:var(--muted);margin-bottom:10px">${esc(a.shortDesc)}</p>
+                <a class="btn btn-ghost btn-sm btn-block" href="#/agency/${esc(a.slug)}">View Agency</a>
+              </div>
+            `).join("")}
+          </div>` : `<div class="empty">No matching active agencies found.</div>`}
+        </section>
+      ` : ""}
+
+      ${show("services") ? `
+        <section style="margin-bottom:28px">
+          <h2 style="margin-bottom:12px">Agency Services (${matchedServices.length})</h2>
+          ${matchedServices.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+            ${matchedServices.map(({ agency: a, service: svc }) => `
+              <div class="card">
+                <span class="badge role" style="font-size:.72rem">${esc(svc.category)}</span>
+                <h3 style="margin:6px 0">${esc(svc.title)}</h3>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">${esc(svc.desc)}</p>
+                <div style="font-weight:700;color:var(--emerald);margin-bottom:10px">${esc(svc.startingPrice)} · by <a href="#/agency/${esc(a.slug)}">${esc(a.name)}</a></div>
+                <button class="btn btn-primary btn-sm btn-block" data-act="open-quote-modal" data-agency-id="${a.id}" data-service-title="${esc(svc.title)}" data-category="${esc(svc.category)}">Request Quote</button>
+              </div>
+            `).join("")}
+          </div>` : `<div class="empty">No matching services found.</div>`}
+        </section>
+      ` : ""}
+
+      ${show("opportunities") ? `
+        <section>
+          <h2 style="margin-bottom:12px">Opportunities (${matchedOpps.length})</h2>
+          ${matchedOpps.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+            ${matchedOpps.map(o => `
+              <div class="card">
+                <span class="badge ${o.verificationStatus === "verified" ? "verified" : "community"}">${esc(o.verificationStatus)}</span>
+                <h3 style="margin:6px 0">${esc(o.title)}</h3>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">${esc(o.organisation)} · ${esc(o.category)}</p>
+                <a class="btn btn-ghost btn-sm btn-block" href="#/opportunities">View in Opportunities Centre</a>
+              </div>
+            `).join("")}
+          </div>` : `<div class="empty">No matching opportunities found.</div>`}
+        </section>
+      ` : ""}
+    </div>
+    ${appFooter(u)}
+  `;
+}
+
+function pageHelp(u) {
+  const guides = [
+    {
+      title: "1. Student Profile & Talent Hub Guide",
+      body: "Build your authentic student profile with skills, work samples, experience level, and availability. Control who sees your profile via Settings (Public, Students Only, or Hidden). Personal emails, institutional IDs, and phone numbers are never exposed publicly."
+    },
+    {
+      title: "2. Agency Creation & 3–10 Member Rule",
+      body: "Students can form independent agencies with 3 to 10 members. New agencies start in FORMING status until at least 3 invited students accept. Only active agencies (3–10 members) appear in the public Marketplace."
+    },
+    {
+      title: "3. Team Ownership & Revenue Agreements",
+      body: "TeamBud never automatically assigns equal equity or equal revenue splits. Teams use the Agreement Guide and Financial Dashboard to define roles, ownership terms, project contributions, exit rules, and agreed per-project Naira allocations."
+    },
+    {
+      title: "4. Payments, Invoices & Paystack Verification",
+      body: "Client payments run through Paystack (in Test Mode during development). Secret keys stay strictly on the server, card numbers are never stored by TeamBud, and payment confirmations verify against server-side Paystack APIs and webhooks before updating statuses (Awaiting Payment, Processing, Paid, Failed, Refunded, Disputed)."
+    },
+    {
+      title: "5. Verification Tiers & Transparency",
+      body: "TeamBud distinguishes four verification states: Registered, Email Verified, Student Verified, and Agency Verified. Active agencies without administrator approval remain labeled Unverified. Verification confirms identity/standing only and does NOT endorse or certify commercial competence."
+    },
+    {
+      title: "6. Safety, Blocking & Moderation",
+      body: "Report suspicious or harmful activity—including fake agencies, misleading service listings, fraud, harassment, inappropriate content, or payment disputes—from student profiles, agency pages, or project dashboards. Administrators review every case."
+    },
+    {
+      title: "7. Client Guide & Completed-Project Reviews",
+      body: "Clients can explore the Marketplace, bookmark agencies into Saved Agencies, request custom quotes, approve milestone proposals, and pay via Paystack. Verified agency reviews can only be submitted after a commissioned project reaches Completed status."
+    }
+  ];
+
+  return `
+    ${protoBar()}
+    <div style="max-width:960px;margin:0 auto;padding:20px 24px 80px">
+      ${publicHeader(u, "help")}
+      <div class="page-h">
+        <div>
+          <h1>TeamBud Help Centre</h1>
+          <p>Guides on profiles, student agencies, Paystack billing, verification tiers, and platform safety.</p>
+        </div>
+        <a class="btn btn-primary btn-sm" href="#/contact">Contact Support</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        ${guides.map(g => `
+          <div class="card">
+            <h2 style="font-size:1.18rem;margin-bottom:8px">${esc(g.title)}</h2>
+            <p style="font-size:.95rem;line-height:1.65;color:var(--forest)">${esc(g.body)}</p>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+    ${appFooter(u)}
+  `;
+}
+
+function pageContact(u) {
+  const ps = (db && db.platformSettings) || DEFAULT_PLATFORM_SETTINGS();
+  return `
+    ${protoBar()}
+    <div style="max-width:900px;margin:0 auto;padding:20px 24px 80px">
+      ${publicHeader(u, "contact")}
+      <div class="page-h">
+        <div>
+          <h1>Contact TeamBud</h1>
+          <p>Reach the administration team for account recovery, verification inquiries, partnerships, or safety escalations.</p>
+        </div>
+      </div>
+
+      ${flash()}
+
+      <div class="cols">
+        <div class="card">
+          <h2>Send an Inquiry</h2>
+          <form data-form="submit-contact-form" novalidate style="margin-top:14px">
+            ${field("name", "Your Full Name *", inp("name", "text", `value="${esc(u ? u.name : "")}" placeholder="e.g. Amina Bello"`))}
+            ${field("email", "Email Address *", inp("email", "email", `value="${esc(u ? u.email : "")}" placeholder="you@example.com"`))}
+            ${field("subject", "Subject *", inp("subject", "text", 'placeholder="e.g. Agency Verification or Dispute Support"'))}
+            ${field("message", "Message *", `<textarea id="message" name="message" rows="4" placeholder="How can our team help?"></textarea>`)}
+            <button class="btn btn-primary btn-block" type="submit" style="margin-top:12px">Send Message</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Official Support Channel</h2>
+          <p class="c-sub" style="margin-bottom:16px">Managed dynamically via Platform Settings.</p>
+          <div style="padding:16px;background:var(--ivory);border-radius:12px;border:1px solid var(--line);margin-bottom:16px">
+            <strong style="display:block;margin-bottom:4px">Configured Support Email</strong>
+            ${ps.supportEmail
+              ? `<a href="mailto:${esc(ps.supportEmail)}" style="font-weight:700;color:var(--emerald)">${esc(ps.supportEmail)}</a>`
+              : `<span style="font-size:.88rem;color:var(--muted)">Not yet configured by platform administration. Use the inquiry form on this page to reach TeamBud administrators directly.</span>`}
+          </div>
+          <div style="font-size:.88rem;line-height:1.6;color:var(--forest)">
+            <strong>Need urgent safety intervention?</strong><br>
+            Use the <em>Report</em> action on any student profile or agency page, or review our <a href="#/community-guidelines">Community Guidelines</a> and <a href="#/payment-policy">Payment Policy</a>.
+          </div>
+        </div>
+      </div>
+    </div>
+    ${appFooter(u)}
+  `;
+}
+
+function pageLegal(slug, u) {
+  const docs = {
+    privacy: {
+      title: "Privacy Policy (NDPA Aligned)",
+      sections: [
+        ["1. Data Protection & NDPA Compliance", "TeamBud processes personal data in alignment with the Nigeria Data Protection Act (NDPA), collecting only information necessary to operate student collaboration, agency discovery, and client project workflows."],
+        ["2. Student Confidentiality", "Student IDs, academic verification notes, passwords, and private contact details are strictly excluded from public profiles, marketplace directories, and unauthenticated endpoints."],
+        ["3. Visibility & Data Rights", "Students choose Public, Students Only, or Hidden profile visibility, may deactivate or permanently delete their accounts at any time, and may contact TeamBud administrators regarding data corrections."]
+      ]
+    },
+    terms: {
+      title: "Terms of Use",
+      sections: [
+        ["1. Platform Role", "TeamBud connects students to build collaborative talent profiles and form student agencies (3–10 members) serving commercial clients."],
+        ["2. No Guaranteed Earnings", "TeamBud provides tools, discovery, and payment tracking workflows, but does NOT guarantee employment, client volume, or earnings for any student or agency."],
+        ["3. Account Integrity", "Accounts found misrepresenting academic enrollment, creating fake agencies, or conducting fraud may be suspended by administrators."]
+      ]
+    },
+    "community-guidelines": {
+      title: "Community Guidelines",
+      sections: [
+        ["1. Respect & Authentic Representation", "All members must represent their real skills, personal contributions, and portfolio work honestly."],
+        ["2. Zero Tolerance for Abuse & Fraud", "Harassment, hate speech, spam, fake agencies, misleading service listings, and payment manipulation are prohibited and subject to moderation."],
+        ["3. Reporting & Blocking", "Any user may block problematic individuals and submit structured reports for administrator investigation."]
+      ]
+    },
+    "agency-guidelines": {
+      title: "Agency Ownership & Revenue Agreement Guidelines",
+      sections: [
+        ["1. Independent Student Units", "Agencies formed on TeamBud require 3–10 accepted student members to appear in the marketplace and operate as independent student enterprise units, not statutory corporations unless registered separately."],
+        ["2. Ownership & Revenue Splits", "TeamBud never assumes or forces equal ownership or equal revenue distribution. Agency members must record explicit internal agreements covering equity, per-project revenue allocation, roles, deliverables, IP, confidentiality, and exit terms."]
+      ]
+    },
+    "payment-policy": {
+      title: "Payment & Anti-Fraud Policy",
+      sections: [
+        ["1. Server-Verified Transactions", "Payments are routed through Paystack with server-side reference verification and HMAC webhook validation. Client card numbers are never stored by TeamBud."],
+        ["2. Disputes & Transparency", "Projects record agreed quotation fees, transaction references, timestamps, statuses (Awaiting Payment, Processing, Paid, Failed, Refunded, Disputed), and internal payout confirmations."]
+      ]
+    }
+  };
+  const key = docs[slug] ? slug : "privacy";
+  const doc = docs[key];
+
+  return `
+    ${protoBar()}
+    <div style="max-width:960px;margin:0 auto;padding:20px 24px 80px">
+      ${publicHeader(u)}
+      <div class="page-h">
+        <div>
+          <h1>${esc(doc.title)}</h1>
+          <p>TeamBud Platform Governance, Privacy & Legal Documentation</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px">
+        <a class="opp-chip ${key === "privacy" ? "active" : ""}" href="#/privacy">Privacy Policy</a>
+        <a class="opp-chip ${key === "terms" ? "active" : ""}" href="#/terms">Terms of Use</a>
+        <a class="opp-chip ${key === "community-guidelines" ? "active" : ""}" href="#/community-guidelines">Community Guidelines</a>
+        <a class="opp-chip ${key === "agency-guidelines" ? "active" : ""}" href="#/agency-guidelines">Agency Agreements</a>
+        <a class="opp-chip ${key === "payment-policy" ? "active" : ""}" href="#/payment-policy">Payment Policy</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        ${doc.sections.map(([h, body]) => `
+          <div class="card">
+            <h2 style="font-size:1.15rem;margin-bottom:8px">${esc(h)}</h2>
+            <p style="font-size:.95rem;line-height:1.65;color:var(--forest)">${esc(body)}</p>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+    ${appFooter(u)}
+  `;
+}
+
+function openInviteAgencyModal(studentId) {
+  const u = me();
+  if (!u) {
+    FLASH = { type: "info", text: "Log in as a student to invite teammates." };
+    return go("/login");
+  }
+  const student = userById(studentId);
+  if (!student) return toast("Student not found.");
+  const eligibleAgencies = userAgencies(u.id).filter(a =>
+    isAgencyOwnerOrManager(a, u.id) &&
+    (a.members || []).length < 10 &&
+    !(a.members || []).some(m => m.userId === studentId)
+  );
+  if (!eligibleAgencies.length) {
+    return toast("No eligible agencies with open member slots where you are an Owner/Manager.");
+  }
+
+  showModal(`
+    <h2 style="margin-bottom:6px">Invite ${esc(student.name)} to Your Agency</h2>
+    <p class="c-sub" style="margin-bottom:16px">Select one of your agencies and assign an initial team role.</p>
+    <form data-form="send-agency-invite-form" data-student-id="${student.id}" novalidate>
+      <div class="field">
+        <label for="inv-agency-id">Select Agency *</label>
+        <select id="inv-agency-id" name="agencyId" class="inp">
+          ${eligibleAgencies.map(a => `<option value="${a.id}">${esc(a.name)} (${(a.members || []).length}/10 members)</option>`).join("")}
+        </select>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="inv-agency-role">Assigned Role</label>
+          <select id="inv-agency-role" name="role" class="inp">
+            ${TEAM_ROLES.map(r => `<option value="${r}">${r}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label for="inv-custom-role">Custom Role Title (Optional)</label>
+          <input type="text" id="inv-custom-role" name="customRoleDesc" class="inp" placeholder="e.g. Frontend Developer">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:18px">
+        <button class="btn btn-primary" type="submit">Send Agency Invitation</button>
+        <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+      </div>
+    </form>
+  `);
+}
+
 /* ===================== Router Implementation ===================== */
 function draw(html) {
   root.innerHTML = html;
@@ -7113,18 +9118,10 @@ function route() {
       draw(`
         ${protoBar()}
         <div style="max-width:1200px;margin:0 auto;padding:20px 24px 80px">
-          <header class="row" style="margin-bottom:28px">
-            <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
-            <div style="display:flex;gap:14px;align-items:center">
-              <a class="link" href="${SITE_URL}" style="text-decoration:none;font-weight:600;color:var(--forest)">Home</a>
-              <a class="link" href="#/talent" style="text-decoration:none;font-weight:700;color:var(--emerald)">Talent Hub</a>
-              <a class="link" href="#/marketplace" style="text-decoration:none;font-weight:600;color:var(--forest)">Marketplace</a>
-              <a class="link" href="#/opportunities" style="text-decoration:none;font-weight:600;color:var(--forest)">Opportunities</a>
-              ${u ? (u.role === "client" ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>` : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`) : `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`}
-            </div>
-          </header>
+          ${publicHeader(u, "talent")}
           ${pageTalentHub(u)}
         </div>
+        ${appFooter(u)}
       `);
     }
     document.title = "Talent Hub | TeamBud";
@@ -7154,14 +9151,10 @@ function route() {
       draw(`
         ${protoBar()}
         <div style="max-width:1160px;margin:0 auto;padding:20px 24px 80px">
-          <header class="row" style="margin-bottom:28px">
-            <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
-            <div style="display:flex;gap:10px">
-              ${u ? (u.role === "client" ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>` : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`) : `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`}
-            </div>
-          </header>
+          ${publicHeader(u, "marketplace")}
           ${pageMarketplace(u)}
         </div>
+        ${appFooter(u)}
       `);
     }
     document.title = "Marketplace | TeamBud";
@@ -7177,14 +9170,10 @@ function route() {
       draw(`
         ${protoBar()}
         <div style="max-width:1160px;margin:0 auto;padding:20px 24px 80px">
-          <header class="row" style="margin-bottom:28px">
-            <a class="brand" href="${SITE_URL}"><img src="${window.__ICON}" alt=""><span class="word">Team<b>Bud</b></span></a>
-            <div style="display:flex;gap:10px">
-              ${u ? (u.role === "client" ? `<a class="btn btn-ghost btn-sm" href="#/client">Client Portal</a>` : `<a class="btn btn-ghost btn-sm" href="#/app/overview">Student Portal</a>`) : `<a class="btn btn-primary btn-sm" href="#/login">Log In</a>`}
-            </div>
-          </header>
+          ${publicHeader(u, "opportunities")}
           ${pageOpportunities(u)}
         </div>
+        ${appFooter(u)}
       `);
     }
     document.title = "Opportunities | TeamBud";
@@ -7219,6 +9208,19 @@ function route() {
     return;
   }
 
+  // Guided Onboarding: #/onboarding
+  if (parts[0] === "onboarding") {
+    if (!u) {
+      NEXT = raw;
+      FLASH = { type: "info", text: "Log in to continue your guided profile setup." };
+      return go("/login");
+    }
+    if (u.role !== "student") return go("/client");
+    draw(pageOnboarding(u));
+    document.title = "Guided Profile Setup | TeamBud";
+    return;
+  }
+
   // Auth & General Guards
   const priv = parts[0] === "app" || parts[0] === "client";
   if (priv && !u) {
@@ -7228,12 +9230,18 @@ function route() {
   }
 
   if (priv) {
-    if (parts[0] === "app" && u.role !== "student") return go("/client");
-    if (parts[0] === "client" && u.role !== "client") return go("/app/overview");
+    if (parts[0] === "app") {
+      if (u.role === "admin") return go("/admin");
+      if (u.role !== "student") return go("/client");
+    }
+    if (parts[0] === "client") {
+      if (u.role === "admin") return go("/admin");
+      if (u.role !== "client") return go("/app/overview");
+    }
   }
 
   if (u && ["", "login", "register", "forgot", "reset", "check-email", "verify"].includes(parts[0] || "")) {
-    return go(u.role === "client" ? "/client" : "/app/overview");
+    return go(u.role === "admin" ? "/admin" : (u.role === "client" ? "/client" : "/app/overview"));
   }
 
   window.scrollTo(0, 0);
@@ -7275,6 +9283,45 @@ function route() {
       draw(viewReset(parts[1]));
       return;
 
+    case "admin":
+      if (!u) NEXT = raw;
+      draw(pageAdmin(u, parts[1] || "overview"));
+      document.title = "Admin Dashboard | TeamBud";
+      return;
+
+    case "search": {
+      const rawQuery = raw.includes("?") ? raw.split("?")[1] : (location.search ? location.search.slice(1) : "");
+      const qp = new URLSearchParams(rawQuery);
+      if (qp.has("q")) globalSearchQuery = qp.get("q") || "";
+      draw(pageSearch(u));
+      document.title = "Search | TeamBud";
+      return;
+    }
+
+    case "help":
+      draw(pageHelp(u));
+      document.title = "Help Centre | TeamBud";
+      return;
+
+    case "contact":
+      draw(pageContact(u));
+      document.title = "Contact | TeamBud";
+      return;
+
+    case "legal":
+      draw(pageLegal(parts[1] || "privacy", u));
+      document.title = "Legal & Governance | TeamBud";
+      return;
+
+    case "privacy":
+    case "terms":
+    case "community-guidelines":
+    case "agency-guidelines":
+    case "payment-policy":
+      draw(pageLegal(parts[0], u));
+      document.title = "Legal & Governance | TeamBud";
+      return;
+
     case "client":
       draw(pageClient(u, parts[1] || "overview"));
       document.title = "Client Portal | TeamBud";
@@ -7289,6 +9336,8 @@ function route() {
         agency: pageMyAgency,
         marketplace: pageMarketplace,
         opportunities: pageOpportunities,
+        portfolio: pagePortfolio,
+        messages: pageMessages,
         skills: pageSkills,
         connections: pageConnections,
         notifications: pageNotifs,
@@ -7305,6 +9354,22 @@ function route() {
       if (p === "discover") discoverResults();
       if (p === "marketplace") marketResults();
       if (p === "opportunities") initOppListeners();
+      if (p === "messages") {
+        let mChanged = false;
+        if (activeChatUserId) {
+          (db.messages || []).forEach(m => {
+            if (m.from === activeChatUserId && m.to === u.id && !m.read) {
+              m.read = true;
+              mChanged = true;
+            }
+          });
+          if (mChanged) save();
+        }
+        setTimeout(() => {
+          const stream = $("#direct-chat-stream");
+          if (stream) stream.scrollTop = stream.scrollHeight;
+        }, 20);
+      }
       if (p === "notifications") {
         setTimeout(() => {
           if (location.hash !== "#/app/notifications") return;
@@ -7331,21 +9396,37 @@ function rerender() {
   route();
 }
 
-function resizePhoto(file, cb) {
+function resizePhoto(file, cb, maxSize = 256) {
+  if (!file) return toast("No file selected.");
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowedTypes.includes(file.type)) {
+    return toast("Invalid file type. Please upload a JPEG, PNG, or WebP image.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return toast("Image is too large. Please choose a file under 5 MB.");
+  }
   const r = new FileReader();
   r.onload = () => {
     const im = new Image();
     im.onload = () => {
       const c = document.createElement("canvas");
-      c.width = c.height = 256;
-      const x = c.getContext("2d");
-      const s = Math.min(im.width, im.height);
-      x.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 256, 256);
+      if (maxSize === 256) {
+        c.width = c.height = 256;
+        const x = c.getContext("2d");
+        const s = Math.min(im.width, im.height);
+        x.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 256, 256);
+      } else {
+        const scale = Math.min(1, maxSize / Math.max(im.width, im.height));
+        c.width = Math.round(im.width * scale);
+        c.height = Math.round(im.height * scale);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      }
       cb(c.toDataURL("image/jpeg", 0.85));
     };
-    im.onerror = () => toast("That image could not be read.");
+    im.onerror = () => toast("That image could not be decoded. Please pick another file.");
     im.src = r.result;
   };
+  r.onerror = () => toast("Failed to read image file.");
   r.readAsDataURL(file);
 }
 
@@ -7380,25 +9461,29 @@ const ACT = {
   },
 
   connect: a => {
-    API.connect(me().id, a.dataset.uid);
+    const r = API.connect(me().id, a.dataset.uid);
+    if (r && r.err) return toast(r.err);
     toast("Connection request sent");
     rerender();
   },
 
   accept: a => {
-    API.respond(a.dataset.id, true);
+    const r = API.respond(a.dataset.id, true, me());
+    if (r && r.err) return toast(r.err);
     toast("Connection accepted");
     rerender();
   },
 
   decline: a => {
-    API.respond(a.dataset.id, false);
+    const r = API.respond(a.dataset.id, false, me());
+    if (r && r.err) return toast(r.err);
     toast("Request declined");
     rerender();
   },
 
   cancel: a => {
-    API.cancel(a.dataset.id);
+    const r = API.cancel(a.dataset.id, me());
+    if (r && r.err) return toast(r.err);
     toast("Request cancelled");
     rerender();
   },
@@ -7500,8 +9585,15 @@ const ACT = {
             <input type="text" name="contribution" placeholder="e.g. Lead Frontend Engineer - built responsive UI & cart state" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
           </div>
           <div class="full">
-            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Preview Image URL (Optional)</label>
-            <input type="url" name="image" placeholder="https://images.unsplash.com/... or hosted image link" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
+            <label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:6px">Preview Image Upload or URL (Optional)</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+                Upload Project Image (JPEG/PNG/WebP &lt;5MB)
+                <input type="file" id="proj-img-file" accept="image/jpeg,image/png,image/webp" style="display:none">
+              </label>
+              <span id="proj-img-status" style="font-size:.8rem;color:var(--muted)">No file uploaded</span>
+            </div>
+            <input type="url" name="image" id="proj-img-url" placeholder="Or paste https://... preview image link" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px">
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
@@ -7517,8 +9609,8 @@ const ACT = {
     const u = me();
     if (!u) return;
     if (confirm("Remove this project from your showcase?")) {
-      u.portfolio = (u.portfolio || []).filter(p => p.id !== id);
-      save();
+      const r = API.removePortfolioProject(u.id, id, u);
+      if (r.err) return toast(r.err);
       toast("Project removed");
       rerender();
     }
@@ -7697,17 +9789,282 @@ const ACT = {
   "edit-allocations-modal": a => openCustomAllocModal(null, a.dataset.pid),
   "open-apply-opp-modal": a => openApplyOppModal(a.dataset.oppId),
   "open-post-opp-modal": () => openPostOppModal(),
+  "open-connect-modal": a => openConnectModal(a.dataset.uid),
+  "open-report-modal": a => openReportModal(a.dataset.targetId, a.dataset.targetName, a.dataset.targetType || "student"),
+  "open-invite-agency-modal": a => openInviteAgencyModal(a.dataset.studentId),
+  "toggle-save-agency": a => {
+    const u = me();
+    if (!u) {
+      FLASH = { type: "info", text: "Log in to bookmark agencies." };
+      return go("/login");
+    }
+    const r = API.toggleSaveAgency(u.id, a.dataset.agencyId, u);
+    if (r && r.err) return toast(r.err);
+    toast(r.saved ? "Agency saved to your bookmarks!" : "Removed from Saved Agencies");
+    rerender();
+  },
+  "open-review-modal": a => {
+    openReviewModal(a.dataset.agencyId, a.dataset.projId, a.dataset.projTitle || "");
+  },
+  "set-search-type": a => {
+    globalSearchType = a.dataset.type || "all";
+    rerender();
+  },
+  "admin-approve-stu-verif": a => {
+    const r = API.adminReviewStudentVerif(a.dataset.uid, "verified", "", me());
+    if (r && r.err) return toast(r.err);
+    toast("Student verification approved");
+    rerender();
+  },
+  "admin-reject-stu-verif": a => {
+    const r = API.adminReviewStudentVerif(a.dataset.uid, "rejected", "Verification declined or revoked by administrator", me());
+    if (r && r.err) return toast(r.err);
+    toast("Student verification updated");
+    rerender();
+  },
+  "admin-toggle-stu-suspend": a => {
+    const target = userById(a.dataset.uid);
+    if (!target) return toast("Student account not found.");
+    const nextState = !target.suspended;
+    if (nextState && !confirm(`Suspend ${target.name}'s account? They will be hidden from discovery and unable to log in.`)) return;
+    const r = API.adminSetUserSuspension(target.id, nextState, nextState ? "Suspended by administrator moderation review" : "", me());
+    if (r && r.err) return toast(r.err);
+    toast(nextState ? "Student account suspended" : "Student account restored");
+    rerender();
+  },
+  "admin-approve-ag-verif": a => {
+    const r = API.adminReviewAgencyVerif(a.dataset.aid, "verified", "", me());
+    if (r && r.err) return toast(r.err);
+    toast("Agency marked Agency Verified");
+    rerender();
+  },
+  "admin-reject-ag-verif": a => {
+    const r = API.adminReviewAgencyVerif(a.dataset.aid, "rejected", "Verification declined or revoked by administrator", me());
+    if (r && r.err) return toast(r.err);
+    toast("Agency verification updated");
+    rerender();
+  },
+  "admin-toggle-ag-suspend": a => {
+    const ag = agencyById(a.dataset.aid);
+    if (!ag) return toast("Agency not found.");
+    const nextState = !ag.suspended;
+    if (nextState && !confirm(`Suspend agency "${ag.name}" from public marketplace listings?`)) return;
+    const r = API.adminSetAgencySuspension(ag.id, nextState, nextState ? "Suspended by administrator moderation review" : "", me());
+    if (r && r.err) return toast(r.err);
+    toast(nextState ? "Agency suspended" : "Agency restored");
+    rerender();
+  },
+  "admin-edit-cat-modal": a => {
+    const oldCat = a.dataset.cat || "";
+    showModal(`
+      <h2 style="margin-bottom:6px">Edit Service Category</h2>
+      <p class="c-sub" style="margin-bottom:16px">Rename category across Talent Discovery, Agencies, and Client Requests.</p>
+      <form data-form="admin-edit-cat" novalidate>
+        <input type="hidden" name="oldName" value="${esc(oldCat)}">
+        ${field("newName", "Category Name *", inp("newName", "text", `value="${esc(oldCat)}"`))}
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" type="submit">Save Category</button>
+          <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+        </div>
+      </form>
+    `);
+  },
+  "admin-rm-cat": a => {
+    const cat = a.dataset.cat;
+    if (!confirm(`Remove category "${cat}"?`)) return;
+    const r = API.adminDeleteCategory(cat, me());
+    if (r && r.err) return toast(r.err);
+    toast("Category removed");
+    rerender();
+  },
+  "admin-edit-opp-modal": a => {
+    const o = (db.opportunities || []).find(x => x.id === a.dataset.oppId);
+    if (!o) return toast("Opportunity not found.");
+    const oppCats = ["Client Projects", "Grants", "Competitions", "Startup Challenges", "Mentorship Programmes", "Internship Opportunities", "Business Partnerships", "Training"];
+    showModal(`
+      <h2 style="margin-bottom:6px">Edit Opportunity</h2>
+      <p class="c-sub" style="margin-bottom:16px">Update opportunity listing details or verification badge.</p>
+      <form data-form="admin-save-opp" novalidate>
+        <input type="hidden" name="id" value="${esc(o.id)}">
+        ${field("title", "Title *", inp("title", "text", `value="${esc(o.title)}"`))}
+        ${field("organisation", "Organisation *", inp("organisation", "text", `value="${esc(o.organisation)}"`))}
+        <div class="grid2">
+          ${field("category", "Category", `<select id="edit-opp-cat" name="category">${oppCats.map(c => `<option value="${esc(c)}" ${o.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`)}
+          ${field("verificationStatus", "Badge", `<select id="edit-opp-ver" name="verificationStatus"><option value="verified" ${o.verificationStatus === "verified" ? "selected" : ""}>Verified by TeamBud</option><option value="community" ${o.verificationStatus !== "verified" ? "selected" : ""}>Community</option></select>`)}
+        </div>
+        <div class="grid2">
+          ${field("deadline", "Deadline", inp("deadline", "date", `value="${esc(o.deadline || "")}"`))}
+          ${field("rewardOrValue", "Grant / Compensation", inp("rewardOrValue", "text", `value="${esc(o.rewardOrValue || "")}"`))}
+        </div>
+        ${field("eligibility", "Eligibility *", inp("eligibility", "text", `value="${esc(o.eligibility || "")}"`))}
+        ${field("description", "Description *", `<textarea id="edit-opp-desc" name="description" rows="3">${esc(o.description || "")}</textarea>`)}
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" type="submit">Update Opportunity</button>
+          <button class="btn btn-quiet" type="button" data-act="close-modal">Cancel</button>
+        </div>
+      </form>
+    `);
+  },
+  "admin-rm-opp": a => {
+    if (!confirm("Remove this opportunity listing?")) return;
+    const r = API.adminDeleteOpportunity(a.dataset.oppId, me());
+    if (r && r.err) return toast(r.err);
+    toast("Opportunity removed");
+    rerender();
+  },
+  "admin-mod-review": a => {
+    const r = API.adminModerateReview(a.dataset.id, a.dataset.status, me());
+    if (r && r.err) return toast(r.err);
+    toast("Review moderation updated");
+    rerender();
+  },
+  "admin-resolve-contact": a => {
+    const r = API.adminResolveContact(a.dataset.id, "resolved", me());
+    if (r && r.err) return toast(r.err);
+    toast("Contact inquiry marked resolved");
+    rerender();
+  },
+  "save-opp": a => {
+    const u = me();
+    if (!u) {
+      FLASH = { type: "info", text: "Log in to bookmark opportunities." };
+      return go("/login");
+    }
+    u.savedOpps = u.savedOpps || [];
+    const oid = a.dataset.oppId;
+    if (u.savedOpps.includes(oid)) {
+      u.savedOpps = u.savedOpps.filter(x => x !== oid);
+      toast("Removed from Saved Opportunities");
+    } else {
+      u.savedOpps.push(oid);
+      toast("Opportunity saved!");
+    }
+    save();
+    rerender();
+  },
+  "set-conn-tab": a => {
+    activeConnTab = a.dataset.tab || "accepted";
+    rerender();
+  },
+  "rm-conn": a => {
+    if (confirm("Remove this connection? You can reconnect later if needed.")) {
+      const r = API.removeConnection(a.dataset.id, me());
+      if (r && r.err) return toast(r.err);
+      toast("Connection removed");
+      rerender();
+    }
+  },
+  "unblock-user": a => {
+    const u = me();
+    if (!u) return;
+    API.unblockUser(u.id, a.dataset.uid);
+    toast("Student unblocked");
+    rerender();
+  },
+  "go-msg": a => {
+    activeChatUserId = a.dataset.uid;
+    go("/app/messages");
+  },
+  "switch-chat": a => {
+    activeChatUserId = a.dataset.uid;
+    rerender();
+  },
+  "set-ob-step": a => {
+    obStep = Math.max(1, Math.min(6, Number(a.dataset.step) || 1));
+    rerender();
+  },
+  "skip-ob-step5": () => {
+    obStep = 6;
+    rerender();
+  },
+  "ob-add-custom-skill": () => {
+    const u = me();
+    if (!u) return;
+    const inpEl = $("#ob-custom-skill-inp");
+    const customName = (inpEl ? inpEl.value : "").trim();
+    if (!customName) return toast("Enter a skill name first.");
+    // Preserve any currently checked checkboxes on Step 2 before rerendering
+    const checkedVals = $$('form[data-form="ob-step-2"] input[name="skills"]:checked').map(c => c.value);
+    checkedVals.forEach(name => {
+      if (!(u.skills || []).some(s => s.name.toLowerCase() === name.toLowerCase())) {
+        u.skills.push({ id: rid(), name, level: "Intermediate", pro: true, collab: true, learn: false });
+      }
+    });
+    if (!(u.skills || []).some(s => s.name.toLowerCase() === customName.toLowerCase())) {
+      u.skills.push({ id: rid(), name: customName, level: "Intermediate", pro: true, collab: true, learn: false });
+      log(u, "Added custom skill: " + customName);
+      save();
+      toast(`Added "${customName}" to your skills!`);
+    } else {
+      toast(`"${customName}" is already in your skills.`);
+    }
+    rerender();
+  },
+  "finish-onboarding": () => {
+    const u = me();
+    if (u) {
+      u.onboarded = true;
+      u.hasSeenOnboarding = true;
+      log(u, "Completed guided talent profile setup");
+      save();
+      toast("Welcome to TeamBud! Your talent profile is ready.");
+    }
+    obStep = 1;
+    go("/app/overview");
+  },
   "reset-opp-filters": () => {
     oppCurrentCategory = "All";
     oppCurrentVerification = "All";
+    oppCurrentAudience = "All";
     oppSearchQuery = "";
     rerender();
   },
 
+  "open-deactivate-modal": () => {
+    const u = me();
+    if (!u) return;
+    showModal(`
+      <h3 style="font-size:1.3rem;font-weight:800;color:var(--forest);margin-bottom:8px">Deactivate Your Account?</h3>
+      <p style="font-size:.9rem;color:var(--muted);margin-bottom:18px;line-height:1.55">
+        Your talent profile will be hidden from discovery and directory listings until you log back in. Your skills, portfolio, and agency memberships remain intact and will reactivate automatically when you sign in again.
+      </p>
+      <form data-form="confirm-deactivate" novalidate>
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+          <button type="button" class="btn btn-quiet" data-act="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Deactivate Account</button>
+        </div>
+      </form>
+    `);
+  },
+
+  "open-delete-account-modal": () => {
+    const u = me();
+    if (!u) return;
+    showModal(`
+      <h3 style="font-size:1.3rem;font-weight:800;color:var(--danger);margin-bottom:8px">Permanently Delete Account</h3>
+      <p style="font-size:.9rem;color:var(--muted);margin-bottom:14px;line-height:1.55">
+        This action cannot be undone. Your student profile, skills, portfolio projects, connections, direct messages, and pending invitations will be permanently removed, and any agencies you belong to will be updated accordingly.
+      </p>
+      <form data-form="confirm-delete-account" novalidate>
+        <div class="field">
+          <label for="delete-confirm-inp">Type <strong>DELETE</strong> to confirm permanent deletion *</label>
+          <input type="text" id="delete-confirm-inp" name="confirmText" class="inp" placeholder="DELETE" required autocomplete="off">
+          <small class="err"></small>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+          <button type="button" class="btn btn-quiet" data-act="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);color:#fff">Delete Permanently</button>
+        </div>
+      </form>
+    `);
+  },
+
   "rm-skill": a => {
     const u = me();
-    u.skills = u.skills.filter(s => s.id !== a.dataset.id);
-    save();
+    if (!u) return;
+    const r = API.removeSkill(u.id, a.dataset.id, u);
+    if (r && r.err) return toast(r.err);
+    toast("Skill removed");
     rerender();
   },
 
@@ -7734,6 +10091,12 @@ const ACT = {
 };
 
 document.addEventListener("click", e => {
+  const audChip = e.target.closest("[data-opp-aud]");
+  if (audChip) {
+    oppCurrentAudience = audChip.dataset.oppAud;
+    rerender();
+    return;
+  }
   const chip = e.target.closest("[data-opp-cat]");
   if (chip) {
     oppCurrentCategory = chip.dataset.oppCat;
@@ -7760,6 +10123,16 @@ document.addEventListener("input", e => {
   if (t.dataset && t.dataset.live === "disc") discoverResults();
   if (t.dataset && t.dataset.live === "market") marketResults();
   if (t.dataset && t.dataset.live === "talent") talentHubResults();
+  if (t.dataset && t.dataset.live === "admin-stu") {
+    adminStudentSearch = t.value;
+    rerender();
+    const inp = $("#admin-stu-search");
+    if (inp) {
+      inp.focus();
+      const len = inp.value.length;
+      inp.setSelectionRange(len, len);
+    }
+  }
 });
 
 document.addEventListener("change", e => {
@@ -7781,13 +10154,22 @@ document.addEventListener("change", e => {
     toast("Preference updated");
   }
   if (L === "photo" && t.files[0] && u) {
-    if (t.files[0].size > 8e6) return toast("Choose an image under 8 MB.");
     resizePhoto(t.files[0], d => {
       u.photo = d;
       log(u, "Updated profile photo");
       save();
       rerender();
     });
+  }
+
+  if (t.id === "proj-img-file" && t.files[0]) {
+    resizePhoto(t.files[0], d => {
+      const inp = $("#proj-img-url");
+      const st = $("#proj-img-status");
+      if (inp) inp.value = d;
+      if (st) st.textContent = "Image attached ✓";
+      toast("Project preview image ready");
+    }, 960);
   }
 
   // Agency logo upload in creation form
@@ -7832,8 +10214,11 @@ document.addEventListener("submit", async e => {
       return go("/check-email/" + r.unverified.id);
     }
     const next = NEXT; NEXT = null;
-    if (next && /^\/(app|client|agency|agency-hub|marketplace)/.test(next)) go(next);
-    else go(r.user.role === "client" ? "/client" : "/app/overview");
+    if (next && /^\/(app|client|admin|agency|agency-hub|marketplace|onboarding)/.test(next)) go(next);
+    else if (r.user.role === "admin") go("/admin");
+    else if (r.user.role === "client") go("/client");
+    else if (r.user.onboarded === false && !r.user.hasSeenOnboarding) { obStep = 1; go("/onboarding"); }
+    else go("/app/overview");
     route();
     return;
   }
@@ -7866,6 +10251,40 @@ document.addEventListener("submit", async e => {
     busy(false);
     if (r.errs) return setErrs(f, r.errs);
     go("/check-email/" + r.user.id);
+    route();
+    return;
+  }
+
+  if (kind === "forgot") {
+    if (!validEmail((v.email || "").trim())) return setErrs(f, { email: "Enter a valid email address." });
+    const target = db.users.find(x => x.email === v.email.trim().toLowerCase());
+    const out = $("#forgot-out");
+    if (target) {
+      const tok = API.makeToken(target.id, "reset", 3600000);
+      save();
+      if (out) {
+        out.innerHTML = `<div class="alert ok" style="margin-top:14px">Reset link ready: <a href="#/reset/${tok.t}" style="font-weight:700">Click here to reset password</a></div>`;
+      }
+    } else if (out) {
+      out.innerHTML = `<div class="alert ok" style="margin-top:14px">If an account exists for that email, a reset link has been prepared.</div>`;
+    }
+    return;
+  }
+
+  if (kind === "reset") {
+    const pc = pwCheck(v.newpw || "");
+    if (!pc.ok) errs.newpw = "Use at least 8 characters with lowercase, uppercase, number, symbol.";
+    if (v.confirm !== v.newpw || !v.confirm) errs.confirm = "Passwords do not match.";
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    busy(true);
+    const ok = await API.resetPassword(f.dataset.token, v.newpw);
+    busy(false);
+    if (!ok) {
+      FLASH = { type: "bad", text: "This password reset link is invalid or expired." };
+      return go("/forgot");
+    }
+    FLASH = { type: "ok", text: "Password updated! You can now log in." };
+    go("/login");
     route();
     return;
   }
@@ -8158,9 +10577,147 @@ document.addEventListener("submit", async e => {
     return;
   }
 
-  // Core student forms: profile, add-skill, add-exp, add-link
+  if (kind === "global-search-form") {
+    globalSearchQuery = (v.q || "").trim();
+    go("/search" + (globalSearchQuery ? "?q=" + encodeURIComponent(globalSearchQuery) : ""));
+    route();
+    return;
+  }
+
+  if (kind === "submit-contact-form") {
+    need("name", "Enter your full name.");
+    if (!validEmail((v.email || "").trim())) errs.email = "Enter a valid email address.";
+    need("subject", "Enter a subject.");
+    need("message", "Enter your message.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    const r = API.submitContactInquiry(v);
+    if (r && r.err) return setErrs(f, { form: r.err });
+    FLASH = { type: "ok", text: "Your inquiry has been sent to TeamBud administration." };
+    rerender();
+    return;
+  }
+
+  // Core student / authenticated forms
   const u = me();
   if (!u) return route();
+
+  if (kind === "send-connect-form") {
+    const r = API.connect(u.id, f.dataset.uid, v.note || "");
+    if (r && r.err) return toast(r.err);
+    closeModal();
+    toast("Connection request sent with introduction note!");
+    rerender();
+    return;
+  }
+
+  if (kind === "submit-report-form") {
+    const targetId = f.dataset.uid;
+    const targetType = f.dataset.targetType || "student";
+    const shouldBlock = targetType !== "agency" && !!(f.elements.blockUser && f.elements.blockUser.checked);
+    const r = API.submitReport(u.id, targetType, targetId, v.reason, v.comments, shouldBlock);
+    if (r && r.err) return toast(r.err);
+    toast(shouldBlock ? "Safety report submitted and student blocked." : "Safety report submitted for review.");
+    closeModal();
+    rerender();
+    return;
+  }
+
+  if (kind === "send-agency-invite-form") {
+    if (!v.agencyId) return toast("Select an agency.");
+    const r = API.inviteToAgency(v.agencyId, f.dataset.studentId, v.role, v.customRoleDesc, u);
+    if (r.err) return toast(r.err);
+    closeModal();
+    toast("Agency invitation sent!");
+    rerender();
+    return;
+  }
+
+  if (kind === "send-direct-msg") {
+    const r = API.sendDirectMessage(u.id, f.dataset.to, v.text);
+    if (r && r.err) return toast(r.err);
+    rerender();
+    return;
+  }
+
+  if (kind === "ob-step-1") {
+    if ((v.name || "").trim()) u.name = v.name.trim();
+    u.headline = (v.headline || "").trim();
+    if ((v.institution || "").trim()) u.institution = v.institution.trim();
+    if ((v.department || "").trim()) u.department = v.department.trim();
+    if (v.level) u.level = v.level;
+    if ((v.state || "").trim()) u.state = v.state.trim();
+    u.updated = now();
+    log(u, "Updated basic info in guided setup");
+    save();
+    obStep = 2;
+    rerender();
+    return;
+  }
+
+  if (kind === "ob-step-2") {
+    const selected = $$('input[name="skills"]:checked', f).map(c => c.value);
+    const commonSet = new Set([
+      "UI/UX Design", "Figma", "Web Development", "React",
+      "Mobile Development", "Flutter", "Python", "Node.js",
+      "Content Writing", "Copywriting", "SEO", "Social Media Marketing",
+      "Graphic Design", "Brand Strategy", "Video Editing", "Data Analysis",
+      "Project Management", "Digital Marketing"
+    ].map(x => x.toLowerCase()));
+    const existingCustom = (u.skills || []).filter(s => !commonSet.has(s.name.toLowerCase()));
+    const merged = [...existingCustom];
+    selected.forEach(name => {
+      const prev = (u.skills || []).find(s => s.name.toLowerCase() === name.toLowerCase());
+      merged.push(prev || { id: rid(), name, level: "Intermediate", pro: true, collab: true, learn: false });
+    });
+    u.skills = merged;
+    u.updated = now();
+    save();
+    obStep = 3;
+    rerender();
+    return;
+  }
+
+  if (kind === "ob-step-3") {
+    if (v.experienceLevel) u.experienceLevel = v.experienceLevel;
+    u.updated = now();
+    save();
+    obStep = 4;
+    rerender();
+    return;
+  }
+
+  if (kind === "ob-step-4") {
+    u.lookingFor = $$('input[name="lookingFor"]:checked', f).map(c => c.value);
+    u.updated = now();
+    save();
+    obStep = 5;
+    rerender();
+    return;
+  }
+
+  if (kind === "ob-step-5") {
+    const title = (v.projTitle || "").trim();
+    if (title) {
+      u.portfolio = u.portfolio || [];
+      u.portfolio.unshift({
+        id: rid(),
+        title,
+        category: v.projCategory || "Web Development",
+        date: new Date().getFullYear().toString(),
+        description: (v.projDesc || "").trim() || "Student portfolio work sample.",
+        tools: [],
+        url: safeUrl(v.projUrl || ""),
+        contribution: "Creator",
+        image: ""
+      });
+      log(u, "Added portfolio project during onboarding: " + title);
+    }
+    u.updated = now();
+    save();
+    obStep = 6;
+    rerender();
+    return;
+  }
 
   if (kind === "profile") {
     u.headline = (v.headline || "").trim() || u.headline;
@@ -8176,11 +10733,11 @@ document.addEventListener("submit", async e => {
     u.collab = $$("input[name=collab]:checked", f).map(i => i.value);
     u.lookingFor = $$("input[name=lookingFor]:checked", f).map(i => i.value);
     u.socialLinks = {
-      github: (v.github || "").trim(),
-      behance: (v.behance || "").trim(),
-      linkedin: (v.linkedin || "").trim(),
-      twitter: (v.twitter || "").trim(),
-      website: (v.website || "").trim()
+      github: safeUrl(v.github || ""),
+      behance: safeUrl(v.behance || ""),
+      linkedin: safeUrl(v.linkedin || ""),
+      twitter: safeUrl(v.twitter || ""),
+      website: safeUrl(v.website || "")
     };
     log(u, "Updated student talent profile details");
     save();
@@ -8192,20 +10749,8 @@ document.addEventListener("submit", async e => {
     need("title", "Enter a project title.");
     need("description", "Enter a project description.");
     if (Object.keys(errs).length) return setErrs(f, errs);
-    u.portfolio = u.portfolio || [];
-    const tools = (v.tools || "").split(",").map(t => t.trim()).filter(Boolean);
-    u.portfolio.unshift({
-      id: rid(),
-      title: v.title.trim(),
-      category: v.category || "Project",
-      date: (v.date || "").trim() || "2024",
-      description: v.description.trim(),
-      tools,
-      url: (v.url || "").trim(),
-      contribution: (v.contribution || "").trim(),
-      image: (v.image || "").trim()
-    });
-    save();
+    const r = API.addPortfolioProject(u.id, v, u);
+    if (r && r.err) return toast(r.err);
     closeModal();
     toast("Project added to your portfolio showcase!");
     return rerender();
@@ -8213,20 +10758,15 @@ document.addEventListener("submit", async e => {
 
   if (kind === "add-skill") {
     need("name", "Enter a skill.");
-    if (u.skills.some(s => s.name.toLowerCase() === (v.name || "").trim().toLowerCase())) {
-      errs.name = "You already added this skill.";
-    }
     if (Object.keys(errs).length) return setErrs(f, errs);
-    u.skills.push({
-      id: rid(),
-      name: v.name.trim(),
+    const r = API.addSkill(u.id, {
+      name: v.name,
       level: v.level || "Intermediate",
       pro: !!(f.elements.pro && f.elements.pro.checked),
       learn: !!(f.elements.learn && f.elements.learn.checked),
       collab: !!(f.elements.collab && f.elements.collab.checked)
-    });
-    log(u, "Added skill: " + v.name.trim());
-    save();
+    }, u);
+    if (r && r.err) return setErrs(f, { name: r.err });
     toast("Skill added");
     return rerender();
   }
@@ -8244,10 +10784,122 @@ document.addEventListener("submit", async e => {
   if (kind === "add-link") {
     need("label", "Enter a label.");
     need("url", "Enter full URL.");
+    const cleanUrl = safeUrl(v.url || "");
+    if (!errs.url && !cleanUrl) errs.url = "Enter a valid http:// or https:// URL.";
     if (Object.keys(errs).length) return setErrs(f, errs);
     u.portfolio = u.portfolio || [];
-    u.portfolio.push({ id: rid(), label: v.label.trim(), url: v.url.trim() });
+    u.portfolio.push({ id: rid(), label: v.label.trim(), url: cleanUrl });
     save();
+    return rerender();
+  }
+
+  if (kind === "visibility-settings") {
+    const r = API.updateProfileVisibility(u.id, v.profileVisibility || "public", u);
+    if (r && r.err) return toast(r.err);
+    toast("Profile visibility saved");
+    return rerender();
+  }
+
+  if (kind === "confirm-deactivate") {
+    const r = API.deactivateAccount(u.id, u);
+    if (r && r.err) return toast(r.err);
+    closeModal();
+    FLASH = { type: "info", text: "Your account has been deactivated. Log in anytime to reactivate it." };
+    go("/login");
+    return route();
+  }
+
+  if (kind === "confirm-delete-account") {
+    if ((v.confirmText || "").trim() !== "DELETE") {
+      return setErrs(f, { confirmText: "Type DELETE in uppercase to confirm." });
+    }
+    const r = API.deleteAccount(u.id, u);
+    if (r && r.err) return toast(r.err);
+    closeModal();
+    FLASH = { type: "ok", text: "Your account and personal data have been permanently deleted." };
+    go("/login");
+    return route();
+  }
+
+  if (kind === "request-student-verif") {
+    const r = API.requestStudentVerification(u.id, v.institutionEmail, v.docNote, u);
+    if (r && r.err) return toast(r.err);
+    toast("Student verification request submitted for admin review.");
+    return rerender();
+  }
+
+  if (kind === "request-agency-verif") {
+    const r = API.requestAgencyVerification(f.dataset.agencyId, v.docNote, u);
+    if (r && r.err) return toast(r.err);
+    toast("Agency verification request submitted for admin review.");
+    return rerender();
+  }
+
+  if (kind === "submit-agency-review") {
+    need("comment", "Please write feedback about the completed project.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    const r = API.submitAgencyReview(u.id, f.dataset.agencyId, f.dataset.projId, v.rating, v.comment, u);
+    if (r && r.err) return toast(r.err);
+    closeModal();
+    toast("Thank you! Your verified project review has been published.");
+    return rerender();
+  }
+
+  if (kind === "admin-add-cat") {
+    need("name", "Enter a category name.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    const r = API.adminSaveCategory("", v.name, u);
+    if (r && r.err) return setErrs(f, { name: r.err });
+    toast("Service category added");
+    return rerender();
+  }
+
+  if (kind === "admin-edit-cat") {
+    need("newName", "Enter a category name.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    const r = API.adminSaveCategory(v.oldName, v.newName, u);
+    if (r && r.err) return setErrs(f, { newName: r.err });
+    closeModal();
+    toast("Service category updated");
+    return rerender();
+  }
+
+  if (kind === "admin-save-opp") {
+    need("title", "Enter opportunity title.");
+    need("organisation", "Enter organisation name.");
+    need("eligibility", "Enter eligibility criteria.");
+    need("description", "Enter description.");
+    if (Object.keys(errs).length) return setErrs(f, errs);
+    const r = API.adminSaveOpportunity(v, u);
+    if (r && r.err) return toast(r.err);
+    closeModal();
+    toast(v.id ? "Opportunity updated" : "Opportunity published");
+    return rerender();
+  }
+
+  if (kind === "admin-update-report") {
+    const r = API.adminUpdateReport(f.dataset.rid, v.status, v.adminNotes, v.actionTaken, u);
+    if (r && r.err) return toast(r.err);
+    toast("Moderation case updated");
+    return rerender();
+  }
+
+  if (kind === "admin-save-settings") {
+    const r = API.adminUpdateSettings({
+      platformName: v.platformName,
+      tagline: v.tagline,
+      brandLogoUrl: v.brandLogoUrl,
+      supportEmail: v.supportEmail,
+      paystackMode: v.paystackMode,
+      announcement: v.announcement,
+      announcementActive: !!(f.elements.announcementActive && f.elements.announcementActive.checked),
+      welcomeSubject: v.welcomeSubject,
+      welcomeBody: v.welcomeBody,
+      verificationSubject: v.verificationSubject,
+      verificationBody: v.verificationBody
+    }, u);
+    if (r && r.err) return toast(r.err);
+    toast("Platform settings saved!");
     return rerender();
   }
 });

@@ -57,7 +57,20 @@
     { "source": "/check-email", "destination": "/teambud-app.html" },
     { "source": "/opportunities/:path*", "destination": "/teambud-app.html" },
     { "source": "/opportunities", "destination": "/teambud-app.html" },
+    { "source": "/onboarding/:path*", "destination": "/teambud-app.html" },
+    { "source": "/onboarding", "destination": "/teambud-app.html" },
     { "source": "/verify/:path*", "destination": "/teambud-app.html" },
-    { "source": "/verify", "destination": "/teambud-app.html" }
+    { "source": "/verify", "destination": "/teambud-app.html" },
+    { "source": "/admin/:path*", "destination": "/teambud-app.html" },
+    { "source": "/admin", "destination": "/teambud-app.html" },
+    { "source": "/search", "destination": "/teambud-app.html" },
+    { "source": "/help", "destination": "/teambud-app.html" },
+    { "source": "/contact", "destination": "/teambud-app.html" },
+    { "source": "/privacy", "destination": "/teambud-app.html" },
+    { "source": "/terms", "destination": "/teambud-app.html" },
+    { "source": "/community-guidelines", "destination": "/teambud-app.html" },
+    { "source": "/agency-guidelines", "destination": "/teambud-app.html" },
+    { "source": "/payment-policy", "destination": "/teambud-app.html" },
+    { "source": "/legal/:path*", "destination": "/teambud-app.html" }
   ]
 }

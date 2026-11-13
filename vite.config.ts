@@ -26,6 +26,10 @@ export default defineConfig(() => {
               }
               return;
             }
+            const clean = (req.url || '').split('?')[0];
+            if (/^\/(admin|search|help|contact|privacy|terms|community-guidelines|agency-guidelines|payment-policy|legal|talent|agency|agency-hub|join-agency|marketplace|create-agency|client|app|login|register|forgot|reset|check-email|opportunities|onboarding|verify)(\/|$)/.test(clean)) {
+              req.url = '/teambud-app.html';
+            }
             next();
           });
         }
